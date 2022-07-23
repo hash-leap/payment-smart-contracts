@@ -25,5 +25,17 @@ task("account", "Prints the account at the index")
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.4",
+  solidity: "0.8.14",
+  networks: {
+    hardhat: {
+      chainId: 1337,
+    },
+    rinkeby: {
+      url: process.env.QUICKNODE_URL,
+      accounts: [process.env.DEPLOY_ACCOUNT],
+    },
+  },
+  paths: {
+    artifacts: "./src/artifacts",
+  },
 };
