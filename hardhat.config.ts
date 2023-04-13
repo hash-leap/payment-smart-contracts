@@ -1,6 +1,8 @@
 import "@nomiclabs/hardhat-waffle";
 import "solidity-coverage";
 import { task } from "hardhat/config";
+import * as dotenv from "dotenv";
+dotenv.config();
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -25,17 +27,21 @@ task("account", "Prints the account at the index")
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.14",
+  solidity: "0.8.18",
+  defaultNetwork: "localhost",
   networks: {
     hardhat: {
-      chainId: 1337,
     },
-    rinkeby: {
-      url: process.env.QUICKNODE_URL,
-      accounts: [process.env.DEPLOY_ACCOUNT],
-    },
+    goerli: {
+      url: process.env.GOERLI_RPC_URL,
+      accounts: [process.env.ACCOUNT_PRIVATE_KEY]
+    }, 
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_PRIVATE_KEY
   },
   paths: {
     artifacts: "./src/artifacts",
+    tests: "tests"
   },
 };
