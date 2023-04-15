@@ -1,5 +1,5 @@
 /* global ethers */
-import { Contract, utils } from "ethers";
+import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
 const FacetCutAction = { Add: 0, Replace: 1, Remove: 2 };
