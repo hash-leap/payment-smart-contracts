@@ -5,9 +5,7 @@ contract SpotPaymentFacetV1 {
     event TestEvent(address something);
 
     function test1Func1() external pure returns(uint a){
-        a = 1;
+        a = 2;
         return a;
     }
-
-    function supportsInterface(bytes4 _interfaceID) external view returns (bool) {}
 }
