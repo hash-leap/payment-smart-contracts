@@ -78,20 +78,20 @@ describe("DiamondTest", async function () {
   });
 
   it("should add SpotPayment functions", async () => {
-    const SpotPaymentFacet = await ethers.getContractFactory(
-      "SpotPaymentFacet"
+    const SpotPaymentFacetV1 = await ethers.getContractFactory(
+      "SpotPaymentFacetV1"
     );
-    const spotPaymentFacet = await SpotPaymentFacet.deploy();
-    await spotPaymentFacet.deployed();
-    addresses.push(spotPaymentFacet.address);
-    const selectors = getSelectors(spotPaymentFacet).remove([
+    const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
+    await spotPaymentFacetV1.deployed();
+    addresses.push(spotPaymentFacetV1.address);
+    const selectors = getSelectors(spotPaymentFacetV1).remove([
       "supportsInterface(bytes4)",
     ]);
 
     tx = await diamondCutFacet.diamondCut(
       [
         {
-          facetAddress: spotPaymentFacet.address,
+          facetAddress: spotPaymentFacetV1.address,
           action: FacetCutAction.Add,
           functionSelectors: selectors,
         },
@@ -105,14 +105,14 @@ describe("DiamondTest", async function () {
       throw Error(`Diamond upgrade failed: ${tx.hash}`);
     }
     result = await diamondLoupeFacet.facetFunctionSelectors(
-      spotPaymentFacet.address
+      spotPaymentFacetV1.address
     );
     assert.sameMembers(result, selectors);
   });
 
   it("should test function call", async () => {
     const spotPaymentFacet = await ethers.getContractAt(
-      "SpotPaymentFacet",
+      "SpotPaymentFacetV1",
       diamondAddress
     );
     const funcValue = await spotPaymentFacet.test1Func1();
@@ -120,11 +120,11 @@ describe("DiamondTest", async function () {
   });
 
   it("should replace supportsInterface function", async () => {
-    const SpotPaymentFacet = await ethers.getContractFactory(
-      "SpotPaymentFacet"
+    const SpotPaymentFacetV1 = await ethers.getContractFactory(
+      "SpotPaymentFacetV1"
     );
-    const spotPaymentFacet = await SpotPaymentFacet.deploy();
-    const selectors = getSelectors(spotPaymentFacet).get([
+    const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
+    const selectors = getSelectors(spotPaymentFacetV1).get([
       "supportsInterface(bytes4)",
     ]);
     const testFacetAddress = addresses[3];
@@ -145,7 +145,7 @@ describe("DiamondTest", async function () {
       throw Error(`Diamond upgrade failed: ${tx.hash}`);
     }
     result = await diamondLoupeFacet.facetFunctionSelectors(testFacetAddress);
-    assert.sameMembers(result, getSelectors(spotPaymentFacet));
+    assert.sameMembers(result, getSelectors(spotPaymentFacetV1));
   });
 
   // it("should add test2 functions", async () => {
@@ -205,12 +205,12 @@ describe("DiamondTest", async function () {
   // });
 
   it("should remove some spotPaymentFacet functions", async () => {
-    const spotPaymentFacet = await ethers.getContractAt(
-      "SpotPaymentFacet",
+    const spotPaymentFacetV1 = await ethers.getContractAt(
+      "SpotPaymentFacetV1",
       diamondAddress
     );
     const functionsToKeep = ["test1Func1()"];
-    const selectors = getSelectors(spotPaymentFacet).remove(functionsToKeep);
+    const selectors = getSelectors(spotPaymentFacetV1).remove(functionsToKeep);
     tx = await diamondCutFacet.diamondCut(
       [
         {
@@ -230,7 +230,7 @@ describe("DiamondTest", async function () {
     result = await diamondLoupeFacet.facetFunctionSelectors(addresses[3]);
     assert.sameMembers(
       result,
-      getSelectors(spotPaymentFacet).get(functionsToKeep)
+      getSelectors(spotPaymentFacetV1).get(functionsToKeep)
     );
   });
 
@@ -272,10 +272,10 @@ describe("DiamondTest", async function () {
     const diamondLoupeFacetSelectors = getSelectors(diamondLoupeFacet).remove([
       "supportsInterface(bytes4)",
     ]);
-    const SpotPaymentFacet = await ethers.getContractFactory(
-      "SpotPaymentFacet"
+    const SpotPaymentFacetV1 = await ethers.getContractFactory(
+      "SpotPaymentFacetV1"
     );
-    const spotPaymentFacet = await SpotPaymentFacet.deploy();
+    const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
     // Any number of functions from any number of facets can be added/replaced/removed in a
     // single transaction
     const cut = [
@@ -292,7 +292,7 @@ describe("DiamondTest", async function () {
       {
         facetAddress: addresses[3],
         action: FacetCutAction.Add,
-        functionSelectors: getSelectors(spotPaymentFacet),
+        functionSelectors: getSelectors(spotPaymentFacetV1),
       },
       // Add new contracts here
     ];
@@ -330,7 +330,7 @@ describe("DiamondTest", async function () {
     );
     assert.sameMembers(
       facets[findAddressPositionInFacets(addresses[3], facets)][1],
-      getSelectors(spotPaymentFacet)
+      getSelectors(spotPaymentFacetV1)
     );
     // Add new contracts here
   });
