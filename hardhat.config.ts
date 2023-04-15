@@ -1,4 +1,5 @@
 import "@nomiclabs/hardhat-waffle";
+import "@nomiclabs/hardhat-etherscan";
 import "solidity-coverage";
 import { task } from "hardhat/config";
 import * as dotenv from "dotenv";
