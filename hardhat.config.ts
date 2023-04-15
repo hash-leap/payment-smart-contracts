@@ -30,18 +30,21 @@ module.exports = {
   solidity: "0.8.18",
   defaultNetwork: "localhost",
   networks: {
-    hardhat: {
-    },
+    hardhat: {},
     goerli: {
       url: process.env.GOERLI_RPC_URL,
-      accounts: [process.env.ACCOUNT_PRIVATE_KEY]
-    }, 
+      accounts: [process.env.ACCOUNT_PRIVATE_KEY],
+    },
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL,
+      accounts: [process.env.ACCOUNT_PRIVATE_KEY],
+    },
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_PRIVATE_KEY
+    apiKey: process.env.ETHERSCAN_PRIVATE_KEY,
   },
   paths: {
     artifacts: "./src/artifacts",
-    tests: "tests"
+    tests: "tests",
   },
 };
