@@ -1,6 +1,3 @@
-/* global ethers */
-/* eslint prefer-const: "off" */
-
 import { ethers } from "hardhat";
 import { getSelectors, FacetCutAction } from "./libraries/diamond";
 
