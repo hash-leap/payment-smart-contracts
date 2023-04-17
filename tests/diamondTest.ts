@@ -11,8 +11,9 @@ import { deployDiamond } from "../scripts/deploy";
 import { assert, expect } from "chai";
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe("DiamondTest", async function () {
+describe("DiamondTest", async () => {
   let diamondAddress: string;
   let diamondCutFacet: Contract;
   let diamondLoupeFacet: Contract;
@@ -21,24 +22,27 @@ describe("DiamondTest", async function () {
   let receipt;
   let result;
   const addresses: string[] = [];
+  let signers: SignerWithAddress[];
 
-  before(async function () {
-    diamondAddress = await deployDiamond();
+  before(async () => {
+    diamondAddress = await deployDiamond(); // deploy script deploys the Diamond and top level facets
     diamondCutFacet = await ethers.getContractAt(
       "DiamondCutFacet",
       diamondAddress
     );
+
     diamondLoupeFacet = await ethers.getContractAt(
       "DiamondLoupeFacet",
       diamondAddress
     );
+
     ownershipFacet = await ethers.getContractAt(
       "OwnershipFacet",
       diamondAddress
     );
   });
 
-  it("should have three facets -- call to facetAddresses function", async () => {
+  it("should have three facets on deploy -- call to facetAddresses function", async () => {
     for (const address of await diamondLoupeFacet.facetAddresses()) {
       addresses.push(address);
     }
@@ -50,9 +54,11 @@ describe("DiamondTest", async function () {
     let selectors = getSelectors(diamondCutFacet);
     result = await diamondLoupeFacet.facetFunctionSelectors(addresses[0]);
     assert.sameMembers(result, selectors);
+
     selectors = getSelectors(diamondLoupeFacet);
     result = await diamondLoupeFacet.facetFunctionSelectors(addresses[1]);
     assert.sameMembers(result, selectors);
+
     selectors = getSelectors(ownershipFacet);
     result = await diamondLoupeFacet.facetFunctionSelectors(addresses[2]);
     assert.sameMembers(result, selectors);
@@ -84,14 +90,12 @@ describe("DiamondTest", async function () {
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
     await spotPaymentFacetV1.deployed();
     addresses.push(spotPaymentFacetV1.address);
-    const selectors = getSelectors(spotPaymentFacetV1).remove([
-      "supportsInterface(bytes4)",
-    ]);
+    const selectors = getSelectors(spotPaymentFacetV1);
 
     tx = await diamondCutFacet.diamondCut(
       [
         {
-          facetAddress: spotPaymentFacetV1.address,
+          facetAddress: addresses[3],
           action: FacetCutAction.Add,
           functionSelectors: selectors,
         },
@@ -104,30 +108,41 @@ describe("DiamondTest", async function () {
     if (!receipt.status) {
       throw Error(`Diamond upgrade failed: ${tx.hash}`);
     }
-    result = await diamondLoupeFacet.facetFunctionSelectors(
-      spotPaymentFacetV1.address
-    );
+    result = await diamondLoupeFacet.facetFunctionSelectors(addresses[3]);
     assert.sameMembers(result, selectors);
   });
 
   it("should test function call", async () => {
+    signers = await ethers.getSigners();
+    const myTestERC20Factory = await ethers.getContractFactory("MyTestERC20");
+    const myTestERC20 = await myTestERC20Factory.deploy();
+    await myTestERC20.deployed();
+
     const spotPaymentFacet = await ethers.getContractAt(
       "SpotPaymentFacetV1",
       diamondAddress
     );
-    const funcValue = await spotPaymentFacet.test1Func1();
-    expect(funcValue).to.eq(1);
+    await myTestERC20.mint(signers[0].address, 200000);
+    await myTestERC20.approve(diamondAddress, 20000);
+    await spotPaymentFacet.transfer(
+      signers[0].address,
+      signers[1].address,
+      myTestERC20.address,
+      20000
+    );
+    expect(await myTestERC20.balanceOf(signers[0].address)).to.eq(180000);
+    expect(await myTestERC20.balanceOf(signers[1].address)).to.eq(20000);
   });
 
-  it("should replace supportsInterface function", async () => {
+  it("should replace transfer function", async () => {
     const SpotPaymentFacetV1 = await ethers.getContractFactory(
       "SpotPaymentFacetV1"
     );
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
     const selectors = getSelectors(spotPaymentFacetV1).get([
-      "supportsInterface(bytes4)",
+      "transfer(address,address,address,uint256)",
     ]);
-    const testFacetAddress = addresses[3];
+    const testFacetAddress = spotPaymentFacetV1.address;
     tx = await diamondCutFacet.diamondCut(
       [
         {
@@ -148,69 +163,15 @@ describe("DiamondTest", async function () {
     assert.sameMembers(result, getSelectors(spotPaymentFacetV1));
   });
 
-  // it("should add test2 functions", async () => {
-  //   const Test2Facet = await ethers.getContractFactory("Test2Facet");
-  //   const test2Facet = await Test2Facet.deploy();
-  //   await test2Facet.deployed();
-  //   addresses.push(test2Facet.address);
-  //   const selectors = getSelectors(test2Facet);
-  //   tx = await diamondCutFacet.diamondCut(
-  //     [
-  //       {
-  //         facetAddress: test2Facet.address,
-  //         action: FacetCutAction.Add,
-  //         functionSelectors: selectors,
-  //       },
-  //     ],
-  //     ethers.constants.AddressZero,
-  //     "0x",
-  //     { gasLimit: 800000 }
-  //   );
-  //   receipt = await tx.wait();
-  //   if (!receipt.status) {
-  //     throw Error(`Diamond upgrade failed: ${tx.hash}`);
-  //   }
-  //   result = await diamondLoupeFacet.facetFunctionSelectors(test2Facet.address);
-  //   assert.sameMembers(result, selectors);
-  // });
-
-  // it("should remove some test2 functions", async () => {
-  //   const test2Facet = await ethers.getContractAt("Test2Facet", diamondAddress);
-  //   const functionsToKeep = [
-  //     "test2Func1()",
-  //     "test2Func5()",
-  //     "test2Func6()",
-  //     "test2Func19()",
-  //     "test2Func20()",
-  //   ];
-  //   const selectors = getSelectors(test2Facet).remove(functionsToKeep);
-  //   tx = await diamondCutFacet.diamondCut(
-  //     [
-  //       {
-  //         facetAddress: ethers.constants.AddressZero,
-  //         action: FacetCutAction.Remove,
-  //         functionSelectors: selectors,
-  //       },
-  //     ],
-  //     ethers.constants.AddressZero,
-  //     "0x",
-  //     { gasLimit: 800000 }
-  //   );
-  //   receipt = await tx.wait();
-  //   if (!receipt.status) {
-  //     throw Error(`Diamond upgrade failed: ${tx.hash}`);
-  //   }
-  //   result = await diamondLoupeFacet.facetFunctionSelectors(addresses[4]);
-  //   assert.sameMembers(result, getSelectors(test2Facet).get(functionsToKeep));
-  // });
-
   it("should remove some spotPaymentFacet functions", async () => {
-    const spotPaymentFacetV1 = await ethers.getContractAt(
-      "SpotPaymentFacetV1",
-      diamondAddress
+    const SpotPaymentFacetV1 = await ethers.getContractFactory(
+      "SpotPaymentFacetV1"
     );
-    const functionsToKeep = ["test1Func1()"];
-    const selectors = getSelectors(spotPaymentFacetV1).remove(functionsToKeep);
+    const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
+    const functionToTest = ["transfer(address,address,address,uint256)"];
+
+    const selectors = getSelectors(spotPaymentFacetV1).get(functionToTest);
+
     tx = await diamondCutFacet.diamondCut(
       [
         {
@@ -227,10 +188,12 @@ describe("DiamondTest", async function () {
     if (!receipt.status) {
       throw Error(`Diamond upgrade failed: ${tx.hash}`);
     }
-    result = await diamondLoupeFacet.facetFunctionSelectors(addresses[3]);
+    result = await diamondLoupeFacet.facetFunctionSelectors(
+      spotPaymentFacetV1.address
+    );
     assert.sameMembers(
       result,
-      getSelectors(spotPaymentFacetV1).get(functionsToKeep)
+      getSelectors(spotPaymentFacetV1).remove(functionToTest)
     );
   });
 
