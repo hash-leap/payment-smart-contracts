@@ -1,7 +1,6 @@
-import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-etherscan";
 import "solidity-coverage";
-import { task } from "hardhat/config";
+import { task, HardhatUserConfig } from "hardhat/config";
 import * as dotenv from "dotenv";
 dotenv.config();
 
@@ -27,18 +26,32 @@ task("account", "Prints the account at the index")
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
-module.exports = {
-  solidity: "0.8.18",
+import "@nomicfoundation/hardhat-toolbox";
+
+const config: HardhatUserConfig = {
+  solidity: {
+    version: "0.8.18",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 10000,
+      },
+    },
+  },
   defaultNetwork: "localhost",
+  typechain: {
+    outDir: "typechain-types",
+    target: "ethers-v5",
+  },
   networks: {
     hardhat: {},
     goerli: {
       url: process.env.GOERLI_RPC_URL,
-      accounts: [process.env.ACCOUNT_PRIVATE_KEY],
+      accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
     },
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL,
-      accounts: [process.env.ACCOUNT_PRIVATE_KEY],
+      accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
     },
   },
   etherscan: {
@@ -46,6 +59,8 @@ module.exports = {
   },
   paths: {
     artifacts: "./src/artifacts",
-    tests: "tests",
+    tests: "./tests",
   },
 };
+
+export default config;

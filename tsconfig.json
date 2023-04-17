@@ -103,6 +103,6 @@
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
   "include": ["./scripts", "tests"],
-  "files": ["hardhat.config.ts"],
+  "files": ["./hardhat.config.ts"],
   "exclude": ["./plugins/**/*", "./typings/**/*", "./dist/**/*"]
 }
