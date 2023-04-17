@@ -31,6 +31,8 @@ export async function deploySpotPaymentFacetV1() {
   if (!receipt.status) {
     throw Error(`Diamond upgrade failed: ${tx.hash}`);
   }
+  console.log("SpotPaymentFacetV1 Deployed at: ", spotPaymentFacetV1.address);
+  return spotPaymentFacetV1.address;
 }
 
 deploySpotPaymentFacetV1()
