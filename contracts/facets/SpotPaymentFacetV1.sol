@@ -7,14 +7,11 @@ pragma solidity ^0.8.18;
 * additional functionalities like tagging, etc.
 /******************************************************************************/
 
-interface IERC20 {
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-}
-contract SpotPaymentFacetV1 {
-    IERC20 private token;
+import { ISpotPaymentFacetV1 } from "../interfaces/ISpotPaymentFacetV1.sol";
+import { IERC20 } from "../interfaces/IERC20.sol";
 
-    event TransferSuccessEvent(address sender, string text, uint256 amount, address recipient);
+contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
+    IERC20 private token;
 
     /// @notice takes the erc20 token and sends to the to address
     /// @param _sender is the token sender address
