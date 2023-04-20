@@ -8,13 +8,17 @@ pragma solidity ^0.8.18;
 /******************************************************************************/
 
 interface ISpotPaymentFacetV1 {
+    enum ContractType {
+        NATIVE_TOKEN,
+        ERC20
+    }
+
     /// @notice Transfers the token to the address
-    /// @param _sender The address of the token sender
     /// @param _recipient The address of the token receiver
     /// @param _erc20Address The address of the ERC20 token on the chain
     /// @param _amount The amount to be transferred from the _sender to the _receiver
     /// @return `true` if completed successfully
-    function transfer(address _sender, address _recipient, address _erc20Address, uint256 _amount) external returns(bool);
+    function transfer(address _recipient, address _erc20Address, uint256 _amount, ContractType _contractType) payable external returns(bool);
 
     event TransferSuccessEvent(address sender, string text, uint256 amount, address recipient);
 }

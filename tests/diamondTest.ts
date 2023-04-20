@@ -10,7 +10,7 @@ import { deployDiamond } from "../scripts/deploy";
 
 import { assert, expect } from "chai";
 import { ethers } from "hardhat";
-import { Contract } from "ethers";
+import { BigNumber, Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe("DiamondTest", async () => {
@@ -95,7 +95,7 @@ describe("DiamondTest", async () => {
     tx = await diamondCutFacet.diamondCut(
       [
         {
-          facetAddress: addresses[3],
+          facetAddress: addresses.at(-1),
           action: FacetCutAction.Add,
           functionSelectors: selectors,
         },
@@ -108,11 +108,11 @@ describe("DiamondTest", async () => {
     if (!receipt.status) {
       throw Error(`Diamond upgrade failed: ${tx.hash}`);
     }
-    result = await diamondLoupeFacet.facetFunctionSelectors(addresses[3]);
+    result = await diamondLoupeFacet.facetFunctionSelectors(addresses.at(-1));
     assert.sameMembers(result, selectors);
   });
 
-  it("should test function call", async () => {
+  it("should test SpotPaymentFacetV1.transfer call with ERC20", async () => {
     signers = await ethers.getSigners();
     const myTestERC20Factory = await ethers.getContractFactory("MyTestERC20");
     const myTestERC20 = await myTestERC20Factory.deploy();
@@ -125,13 +125,52 @@ describe("DiamondTest", async () => {
     await myTestERC20.mint(signers[0].address, 200000);
     await myTestERC20.approve(diamondAddress, 20000);
     await spotPaymentFacet.transfer(
-      signers[0].address,
       signers[1].address,
       myTestERC20.address,
-      20000
+      20000,
+      1
     );
     expect(await myTestERC20.balanceOf(signers[0].address)).to.eq(180000);
     expect(await myTestERC20.balanceOf(signers[1].address)).to.eq(20000);
+  });
+
+  it("should test SpotPaymentFacetV1.transfer call with native token", async () => {
+    let transferTxGasCost: BigNumber;
+    const signer0InitialBalance = await signers[0].getBalance();
+    const signer1InitialBalance = await signers[1].getBalance();
+
+    const spotPaymentFacet = await ethers.getContractAt(
+      "SpotPaymentFacetV1",
+      diamondAddress
+    );
+
+    const transferTokenTx = await spotPaymentFacet.transfer(
+      signers[1].address,
+      ethers.constants.AddressZero,
+      ethers.utils.parseUnits("1", "ether"),
+      0,
+      {
+        value: ethers.utils.parseUnits("1", "ether"),
+      }
+    );
+
+    const transferTokensTxReceipt = await transferTokenTx.wait();
+    transferTxGasCost = transferTokensTxReceipt.gasUsed.mul(
+      transferTokensTxReceipt.effectiveGasPrice
+    );
+
+    const signer0BalanceAfterTransfer = await signers[0].getBalance();
+    const signer1BalanceAfterTransfer = await signers[1].getBalance();
+
+    expect(signer1BalanceAfterTransfer).to.eq(
+      signer1InitialBalance.add(ethers.utils.parseUnits("1"))
+    );
+
+    expect(signer0BalanceAfterTransfer).to.eq(
+      signer0InitialBalance.sub(
+        ethers.utils.parseUnits("1").add(transferTxGasCost)
+      )
+    );
   });
 
   it("should replace transfer function", async () => {
@@ -140,7 +179,7 @@ describe("DiamondTest", async () => {
     );
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
     const selectors = getSelectors(spotPaymentFacetV1).get([
-      "transfer(address,address,address,uint256)",
+      "transfer(address,address,uint256,uint8)",
     ]);
     const testFacetAddress = spotPaymentFacetV1.address;
     tx = await diamondCutFacet.diamondCut(
@@ -168,7 +207,7 @@ describe("DiamondTest", async () => {
       "SpotPaymentFacetV1"
     );
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
-    const functionToTest = ["transfer(address,address,address,uint256)"];
+    const functionToTest = ["transfer(address,address,uint256, uint8)"];
 
     const selectors = getSelectors(spotPaymentFacetV1).get(functionToTest);
 
