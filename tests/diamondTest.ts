@@ -128,7 +128,9 @@ describe("DiamondTest", async () => {
       signers[1].address,
       myTestERC20.address,
       20000,
-      1
+      1,
+      ["tag1", "tag2"],
+      "invoiceNumber"
     );
     expect(await myTestERC20.balanceOf(signers[0].address)).to.eq(180000);
     expect(await myTestERC20.balanceOf(signers[1].address)).to.eq(20000);
@@ -149,6 +151,8 @@ describe("DiamondTest", async () => {
       ethers.constants.AddressZero,
       ethers.utils.parseUnits("1", "ether"),
       0,
+      ["tag1", "tag2"],
+      "invoiceNumber",
       {
         value: ethers.utils.parseUnits("1", "ether"),
       }
@@ -179,7 +183,7 @@ describe("DiamondTest", async () => {
     );
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
     const selectors = getSelectors(spotPaymentFacetV1).get([
-      "transfer(address,address,uint256,uint8)",
+      "transfer(address,address,uint256,uint8,string[],string)",
     ]);
     const testFacetAddress = spotPaymentFacetV1.address;
     tx = await diamondCutFacet.diamondCut(
@@ -207,7 +211,9 @@ describe("DiamondTest", async () => {
       "SpotPaymentFacetV1"
     );
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
-    const functionToTest = ["transfer(address,address,uint256, uint8)"];
+    const functionToTest = [
+      "transfer(address,address,uint256,uint8,string[],string)",
+    ];
 
     const selectors = getSelectors(spotPaymentFacetV1).get(functionToTest);
 

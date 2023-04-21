@@ -26,6 +26,8 @@ describe("SpotPaymentFacetV1", async () => {
           ethers.constants.AddressZero,
           20000,
           0,
+          ["tag1", "tag2"],
+          "invoiceNumber",
           {
             value: ethers.utils.parseUnits("0", "ether"),
           }
@@ -40,6 +42,8 @@ describe("SpotPaymentFacetV1", async () => {
           ethers.constants.AddressZero,
           ethers.utils.parseUnits("0.00011"),
           0,
+          ["tag1", "tag2"],
+          "invoiceNumber",
           {
             value: ethers.utils.parseUnits("0.0001", "ether"),
           }
@@ -54,11 +58,29 @@ describe("SpotPaymentFacetV1", async () => {
           ethers.constants.AddressZero,
           ethers.utils.parseUnits("0.89"),
           0,
+          ["tag1", "tag2"],
+          "invoiceNumber",
           {
             value: ethers.utils.parseUnits("0.1", "ether"),
           }
         )
       ).to.be.revertedWith("Insufficient tokens sent");
+    });
+
+    it("should revert the transaction if sender and recipient addresses are same", async () => {
+      await expect(
+        spotPaymentFacetV1.transfer(
+          signers[0].address,
+          ethers.constants.AddressZero,
+          ethers.utils.parseUnits("1"),
+          0,
+          ["tag1", "tag2"],
+          "invoiceNumber",
+          {
+            value: ethers.utils.parseUnits("1", "ether"),
+          }
+        )
+      ).to.be.revertedWith("Same account transfer is not allowed");
     });
 
     it("should transfer the native token", async () => {
@@ -70,6 +92,8 @@ describe("SpotPaymentFacetV1", async () => {
         ethers.constants.AddressZero,
         ethers.utils.parseUnits("1", "ether"),
         0,
+        ["tag1", "tag2"],
+        "invoiceNumber",
         {
           value: ethers.utils.parseUnits("1", "ether"),
         }
@@ -96,6 +120,10 @@ describe("SpotPaymentFacetV1", async () => {
         spotPaymentFacetV1,
         "TransferSuccessEvent"
       );
+      expect(transferTokenTx).to.emit(
+        spotPaymentFacetV1,
+        "TransferSuccessEvent"
+      );
     });
   });
 
@@ -104,6 +132,19 @@ describe("SpotPaymentFacetV1", async () => {
       const myTestERC20Factory = await ethers.getContractFactory("MyTestERC20");
       myTestERC20 = await myTestERC20Factory.deploy();
       await myTestERC20.deployed();
+    });
+
+    it("should revert the transaction if sender and recipient addresses are same", async () => {
+      await expect(
+        spotPaymentFacetV1.transfer(
+          signers[0].address,
+          ethers.constants.AddressZero,
+          20000,
+          1,
+          ["tag1", "tag2"],
+          "invoiceNumber"
+        )
+      ).to.be.revertedWith("Same account transfer is not allowed");
     });
 
     it("should revert if the insufficient allowwance", async () => {
@@ -115,7 +156,9 @@ describe("SpotPaymentFacetV1", async () => {
           signers[1].address,
           myTestERC20.address,
           20000,
-          1
+          1,
+          ["tag1", "tag2"],
+          "invoiceNumber"
         )
       ).to.be.revertedWith("Insufficient allowance");
     });
@@ -129,7 +172,9 @@ describe("SpotPaymentFacetV1", async () => {
           signers[1].address,
           myTestERC20.address,
           20000,
-          1
+          1,
+          ["tag1", "tag2"],
+          "invoiceNumber"
         )
       ).to.be.revertedWith("Insufficient token balance");
     });
@@ -142,7 +187,9 @@ describe("SpotPaymentFacetV1", async () => {
         signers[1].address,
         myTestERC20.address,
         20000,
-        1
+        1,
+        ["tag1", "tag2"],
+        "invoiceNumber"
       );
 
       expect(await myTestERC20.balanceOf(signers[0].address)).to.eq(180000);
