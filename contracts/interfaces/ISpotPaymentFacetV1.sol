@@ -31,6 +31,7 @@ interface ISpotPaymentFacetV1 {
 
     function getContractAddressCount() external view returns(uint16);
     function getContractAddressAt(uint16 index) external view returns(address);
+    function getTransferAmount(address _contractAddress) external view returns(uint256);
 
     event TransferSuccessEvent(
       address indexed sender, address indexed recipient,

@@ -16,6 +16,7 @@ describe("SpotPaymentFacetV1", async () => {
     await spotPaymentFacetV1.deployed();
 
     signers = await ethers.getSigners();
+    signers[2].connect;
   });
 
   describe("transfer", () => {

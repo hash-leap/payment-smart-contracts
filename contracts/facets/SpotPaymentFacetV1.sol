@@ -7,12 +7,13 @@ pragma solidity ^0.8.18;
 * @dev: Contract to transfer tokens between different parties along with
 * additional functionalities like tagging, etc.
 /******************************************************************************/
-
+ 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import { ISpotPaymentFacetV1 } from "../interfaces/ISpotPaymentFacetV1.sol";
 import { IERC20 } from "../interfaces/IERC20.sol";
 import "hardhat/console.sol";
 
-contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
+contract SpotPaymentFacetV1 is ISpotPaymentFacetV1, Ownable {
     IERC20 private token;
     bool lock;
 
@@ -47,7 +48,7 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
         lock = true;
 
         // store if this is the first time we are using an ERC20 or native token
-        bool newAddress = getTransferAmount(_tokenContractAddress) == 0;
+        bool newAddress = _getTransferAmount(_tokenContractAddress) == 0;
 
         require(msg.sender != _recipient, "Same account transfer is not allowed");
 
@@ -119,18 +120,22 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
     }
 
     // returns the contract address count that have been used for transfers
-    function getContractAddressCount() external view returns(uint16) {
+    function getContractAddressCount() external view onlyOwner returns (uint16) {
         return contractAddressCount;
     }
 
     // returns the contract address present at the passed index
-    function getContractAddressAt(uint16 index) external view returns(address) {
+    function getContractAddressAt(uint16 index) external view onlyOwner returns(address) {
         return addresses[index];
     }
 
     // returns the total amount transferred to/from a contract
     // should only be called by the deployer of the contract
-    function getTransferAmount(address _contractAddress) public view returns(uint256) {
+    function getTransferAmount(address _contractAddress) external view onlyOwner returns(uint256) {
+        return _getTransferAmount(_contractAddress);
+    }
+
+    function _getTransferAmount(address _contractAddress) internal view returns(uint256) {
         return totalTransfers[_contractAddress];
     }
 

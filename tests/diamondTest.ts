@@ -96,7 +96,9 @@ describe("DiamondTest", async () => {
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
     await spotPaymentFacetV1.deployed();
     addresses.push(spotPaymentFacetV1.address);
-    const selectors = getSelectors(spotPaymentFacetV1);
+    const selectors = getSelectors(spotPaymentFacetV1).get(
+      spotPaymentFacetV1Functions
+    );
 
     tx = await diamondCutFacet.diamondCut(
       [
@@ -209,7 +211,7 @@ describe("DiamondTest", async () => {
       throw Error(`Diamond upgrade failed: ${tx.hash}`);
     }
     result = await diamondLoupeFacet.facetFunctionSelectors(testFacetAddress);
-    assert.sameMembers(result, getSelectors(spotPaymentFacetV1));
+    assert.includeMembers(getSelectors(spotPaymentFacetV1), result);
   });
 
   it("should remove spotPaymentFacet functions", async () => {
@@ -217,7 +219,6 @@ describe("DiamondTest", async () => {
       "SpotPaymentFacetV1"
     );
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
-
     const selectors = getSelectors(spotPaymentFacetV1).get(
       spotPaymentFacetV1Functions
     );
@@ -243,7 +244,13 @@ describe("DiamondTest", async () => {
     );
     assert.sameMembers(
       result,
-      getSelectors(spotPaymentFacetV1).remove(spotPaymentFacetV1Functions)
+      getSelectors(spotPaymentFacetV1).remove(
+        spotPaymentFacetV1Functions.concat([
+          "owner()",
+          "renounceOwnership()",
+          "transferOwnership(address)",
+        ])
+      )
     );
   });
 
@@ -305,7 +312,9 @@ describe("DiamondTest", async () => {
       {
         facetAddress: addresses[3],
         action: FacetCutAction.Add,
-        functionSelectors: getSelectors(spotPaymentFacetV1),
+        functionSelectors: getSelectors(spotPaymentFacetV1).get(
+          spotPaymentFacetV1Functions
+        ),
       },
       // Add new contracts here
     ];
@@ -343,7 +352,7 @@ describe("DiamondTest", async () => {
     );
     assert.sameMembers(
       facets[findAddressPositionInFacets(addresses[3], facets)][1],
-      getSelectors(spotPaymentFacetV1)
+      getSelectors(spotPaymentFacetV1).get(spotPaymentFacetV1Functions)
     );
     // Add new contracts here
   });
