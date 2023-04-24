@@ -13,12 +13,28 @@ interface ISpotPaymentFacetV1 {
         ERC20
     }
 
-    /// @notice Transfers the token to the address
-    /// @param _recipient The address of the token receiver
-    /// @param _erc20Address The address of the ERC20 token on the chain
-    /// @param _amount The amount to be transferred from the _sender to the _receiver
-    /// @return `true` if completed successfully
-    function transfer(address _recipient, address _erc20Address, uint256 _amount, ContractType _contractType) payable external returns(bool);
+    /// @notice takes the erc20 token and sends to the to address
+    /// @param _recipient is the token being sent to
+    /// @param _tokenContractAddress is the address of the erc20 token that we need to update
+    /// @param _amount is the amount being sent by the sender
+    /// @param _contractType is the enum to indicate if it is a native or erc20 transfer
+    /// @param _tags is the set of tags associated with this transfer
+    /// @param _paymentRef is the HashLeap payment reference e.g. invoice number or payment link identifier
+    function transfer(
+      address _recipient,
+      address _tokenContractAddress,
+      uint256 _amount,
+      ContractType _contractType,
+      string[] calldata _tags,
+      string calldata _paymentRef
+    ) payable external returns(bool);
 
-    event TransferSuccessEvent(address sender, string text, uint256 amount, address recipient);
+    function getContractAddressCount() external view returns(uint16);
+    function getContractAddressAt(uint16 index) external view returns(address);
+
+    event TransferSuccessEvent(
+      address indexed sender, address indexed recipient,
+      address indexed tokenAddress, string text, string[] tags,
+      uint256 amount, uint256 datetime, string paymentRef
+    );
 }

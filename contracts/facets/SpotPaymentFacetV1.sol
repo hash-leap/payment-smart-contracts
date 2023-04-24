@@ -2,24 +2,54 @@
 pragma solidity ^0.8.18;
 
 /******************************************************************************\
-* Author: Nasir Jamal <nas@hashleap.io> (https://twitter.com/_nasj)
-* Description: Contract to transfer money between different parties along
+* @title SpotPaymentFacetV1
+* @author Nasir Jamal <nas@hashleap.io> (https://twitter.com/_nasj)
+* @dev: Contract to transfer tokens between different parties along with
 * additional functionalities like tagging, etc.
 /******************************************************************************/
 
 import { ISpotPaymentFacetV1 } from "../interfaces/ISpotPaymentFacetV1.sol";
 import { IERC20 } from "../interfaces/IERC20.sol";
+import "hardhat/console.sol";
 
 contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
     IERC20 private token;
+    bool lock;
 
-    /// @notice takes the erc20 token and sends to the to address
+    // stores the total for each ERC20 or native token
+    mapping(address => uint256) private totalTransfers;
+
+    // all contract addresses that we done transfers to
+    address[] private addresses;
+
+    // count of all contract addresses
+    uint16 private contractAddressCount;
+
+    /// @notice takes the erc20 token and sends to the recipient address
     /// @param _recipient is the token being sent to
-    /// @param _erc20Address is the address of the erc20 token that we need to update
-    /// @param _amount is the amount being sent by the sender
-    function transfer(address _recipient, address _erc20Address, uint256 _amount, ContractType _contractType) payable external returns(bool){
+    /// @param _tokenContractAddress is the address of the erc20 token that we need to update
+    /// @dev for native token transfers send AddressZero for _tokenContractAddress
+    /// @param _amount is the amount being sent by the sender to the reciever
+    /// @param _contractType is the enum to indicate if it is a native or erc20 transfer
+    /// @param _tags is the set of tags associated with this transfer
+    /// @param _paymentRef is the HashLeap payment reference e.g. invoice number or payment link identifier
+    function transfer(
+        address _recipient,
+        address _tokenContractAddress,
+        uint256 _amount,
+        ContractType _contractType,
+        string[] calldata _tags,
+        string calldata _paymentRef
+    ) payable external returns(bool){
+        require(!lock, "Error: Re-entering transfer method");
+        require(_amount > 0, "Error: Amount must be greater than zero");
 
-        address msgSender = msg.sender;
+        lock = true;
+
+        // store if this is the first time we are using an ERC20 or native token
+        bool newAddress = getTransferAmount(_tokenContractAddress) == 0;
+
+        require(msg.sender != _recipient, "Same account transfer is not allowed");
 
         // handle contract types
         if (_contractType == ContractType.NATIVE_TOKEN) {
@@ -42,27 +72,27 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
             _amount = msg.value;
 
             (bool sent,) = payable(_recipient).call{value:_amount}(""); // add gas limit before going live
-            require(sent, "Failed to send Ether");
+            require(sent, "Failed to send Native Token");
 
         } else if (_contractType == ContractType.ERC20) {
-            token = IERC20(_erc20Address);
+            token = IERC20(_tokenContractAddress);
 
             // Make sure the user has approved the amount before hitting this function
             // require allowance to be at least the amount being deposited
             require(
-                token.allowance(msgSender, address(this)) >= _amount,
+                token.allowance(msg.sender, address(this)) >= _amount,
                 "Insufficient allowance"
             );
 
             // require users balance to be greater than or equal to the _amount
             require(
-                token.balanceOf(msgSender) >= _amount,
+                token.balanceOf(msg.sender) >= _amount,
                 "Insufficient token balance"
             );
 
             // transfer the tokens to the recipient
             require(
-                token.transferFrom(msgSender, _recipient, _amount),
+                token.transferFrom(msg.sender, _recipient, _amount),
                 "Transfer failed"
             );
         } else {
@@ -70,9 +100,46 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
             revert("Invalid contract type");
         }
 
-        emit TransferSuccessEvent(msgSender, "sending with HashLeap", _amount, _recipient);
+        totalTransfers[_tokenContractAddress] += _amount;
+        updateAddresses(_tokenContractAddress, newAddress);
 
+        emit TransferSuccessEvent(
+            msg.sender,
+            _recipient,
+            _tokenContractAddress,
+            "HashLeap",
+            _tags,
+            _amount,
+            block.timestamp,
+            _paymentRef
+        );
+
+        lock = false;
         return true;
     }
 
+    // returns the contract address count that have been used for transfers
+    function getContractAddressCount() external view returns(uint16) {
+        return contractAddressCount;
+    }
+
+    // returns the contract address present at the passed index
+    function getContractAddressAt(uint16 index) external view returns(address) {
+        return addresses[index];
+    }
+
+    // returns the total amount transferred to/from a contract
+    // should only be called by the deployer of the contract
+    function getTransferAmount(address _contractAddress) public view returns(uint256) {
+        return totalTransfers[_contractAddress];
+    }
+
+    // internal function to do some housekeeping on transfers
+    // e.g. keeping an account of contract address list and positions
+    function updateAddresses(address _contractAddress, bool newAddress) internal {
+        if (newAddress) {
+            addresses.push(_contractAddress);
+            contractAddressCount += 1;
+        }
+    }
 }

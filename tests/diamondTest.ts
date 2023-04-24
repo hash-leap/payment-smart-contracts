@@ -23,6 +23,12 @@ describe("DiamondTest", async () => {
   let result;
   const addresses: string[] = [];
   let signers: SignerWithAddress[];
+  const spotPaymentFacetV1Functions = [
+    "transfer(address,address,uint256,uint8,string[],string)",
+    "getContractAddressCount()",
+    "getContractAddressAt(uint16)",
+    "getTransferAmount(address)",
+  ];
 
   before(async () => {
     diamondAddress = await deployDiamond(); // deploy script deploys the Diamond and top level facets
@@ -177,14 +183,14 @@ describe("DiamondTest", async () => {
     );
   });
 
-  it("should replace transfer function", async () => {
+  it("should replace the functions for SpotPaymentFacetV1", async () => {
     const SpotPaymentFacetV1 = await ethers.getContractFactory(
       "SpotPaymentFacetV1"
     );
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
-    const selectors = getSelectors(spotPaymentFacetV1).get([
-      "transfer(address,address,uint256,uint8,string[],string)",
-    ]);
+    const selectors = getSelectors(spotPaymentFacetV1).get(
+      spotPaymentFacetV1Functions
+    );
     const testFacetAddress = spotPaymentFacetV1.address;
     tx = await diamondCutFacet.diamondCut(
       [
@@ -206,16 +212,15 @@ describe("DiamondTest", async () => {
     assert.sameMembers(result, getSelectors(spotPaymentFacetV1));
   });
 
-  it("should remove some spotPaymentFacet functions", async () => {
+  it("should remove spotPaymentFacet functions", async () => {
     const SpotPaymentFacetV1 = await ethers.getContractFactory(
       "SpotPaymentFacetV1"
     );
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
-    const functionToTest = [
-      "transfer(address,address,uint256,uint8,string[],string)",
-    ];
 
-    const selectors = getSelectors(spotPaymentFacetV1).get(functionToTest);
+    const selectors = getSelectors(spotPaymentFacetV1).get(
+      spotPaymentFacetV1Functions
+    );
 
     tx = await diamondCutFacet.diamondCut(
       [
@@ -238,7 +243,7 @@ describe("DiamondTest", async () => {
     );
     assert.sameMembers(
       result,
-      getSelectors(spotPaymentFacetV1).remove(functionToTest)
+      getSelectors(spotPaymentFacetV1).remove(spotPaymentFacetV1Functions)
     );
   });
 
