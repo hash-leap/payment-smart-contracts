@@ -8,12 +8,11 @@ pragma solidity ^0.8.18;
 * additional functionalities like tagging, etc.
 /******************************************************************************/
  
-import "@openzeppelin/contracts/access/Ownable.sol";
 import { ISpotPaymentFacetV1 } from "../interfaces/ISpotPaymentFacetV1.sol";
 import { IERC20 } from "../interfaces/IERC20.sol";
 import "hardhat/console.sol";
 
-contract SpotPaymentFacetV1 is ISpotPaymentFacetV1, Ownable {
+contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
     IERC20 private token;
     bool lock;
 
@@ -120,18 +119,18 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1, Ownable {
     }
 
     // returns the contract address count that have been used for transfers
-    function getContractAddressCount() external view onlyOwner returns (uint16) {
+    function getContractAddressCount() external view returns (uint16) {
         return contractAddressCount;
     }
 
     // returns the contract address present at the passed index
-    function getContractAddressAt(uint16 index) external view onlyOwner returns(address) {
+    function getContractAddressAt(uint16 index) external view returns(address) {
         return addresses[index];
     }
 
     // returns the total amount transferred to/from a contract
     // should only be called by the deployer of the contract
-    function getTransferAmount(address _contractAddress) external view onlyOwner returns(uint256) {
+    function getTransferAmount(address _contractAddress) external view returns(uint256) {
         return _getTransferAmount(_contractAddress);
     }
 

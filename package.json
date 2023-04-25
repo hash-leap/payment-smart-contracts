@@ -18,7 +18,6 @@
     "@nomiclabs/buidler": "^1.4.8",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-etherscan": "^3.1.7",
-    "@openzeppelin/contracts": "^4.8.3",
     "@types/chai": "^4.3.4",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.15.11",
