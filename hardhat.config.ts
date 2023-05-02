@@ -1,11 +1,12 @@
 import "@nomiclabs/hardhat-etherscan";
+import "@nomicfoundation/hardhat-toolbox";
 import "solidity-coverage";
 import { task, HardhatUserConfig } from "hardhat/config";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
+import "./tasks/eventSubscription";
+
 task("accounts", "Prints the list of accounts", async (_, hre) => {
   const accounts = await hre.ethers.getSigners();
 
@@ -20,13 +21,6 @@ task("account", "Prints the account at the index")
     const accounts = await hre.ethers.getSigners();
     console.log(accounts[taskArgs.index].address);
   });
-// You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more
-
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
-import "@nomicfoundation/hardhat-toolbox";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -51,6 +45,10 @@ const config: HardhatUserConfig = {
     },
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL,
+      accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
+    },
+    mainnet: {
+      url: process.env.MAINNET_RPC_URL,
       accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
     },
   },
