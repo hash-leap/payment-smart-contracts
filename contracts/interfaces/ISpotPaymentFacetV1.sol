@@ -33,7 +33,7 @@ interface ISpotPaymentFacetV1 {
     function getContractAddressAt(uint16 index) external view returns(address);
     function getTransferAmount(address _contractAddress) external view returns(uint256);
 
-    event TransferSuccessEvent(
+    event TransferSuccess(
       address indexed sender, address indexed recipient,
       address indexed tokenAddress, string text, string[] tags,
       uint256 amount, uint256 datetime, string paymentRef

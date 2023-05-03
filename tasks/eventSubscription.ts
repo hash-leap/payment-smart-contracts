@@ -34,7 +34,7 @@ task("event-subscription", "Subscribe to events")
       );
 
       contract.on(
-        "TransferSuccessEvent",
+        "TransferSuccess",
         (
           sender,
           recipient,
@@ -47,7 +47,7 @@ task("event-subscription", "Subscribe to events")
           event
         ) => {
           const emittedEvent = {
-            name: "TransferSuccessEvent",
+            name: "TransferSuccess",
             sender,
             recipient,
             amount,

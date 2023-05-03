@@ -101,7 +101,7 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
         totalTransfers[_tokenContractAddress] += _amount;
         updateAddresses(_tokenContractAddress, newAddress);
 
-        emit TransferSuccessEvent(
+        emit TransferSuccess(
             msg.sender,
             _recipient,
             _tokenContractAddress,

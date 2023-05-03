@@ -126,14 +126,7 @@ describe("SpotPaymentFacetV1", async () => {
             ethers.utils.parseUnits("1").add(transferTxGasCost)
           )
         );
-        expect(transferTokenTx).to.emit(
-          spotPaymentFacetV1,
-          "TransferSuccessEvent"
-        );
-        expect(transferTokenTx).to.emit(
-          spotPaymentFacetV1,
-          "TransferSuccessEvent"
-        );
+        expect(transferTokenTx).to.emit(spotPaymentFacetV1, "TransferSuccess");
         expect(await spotPaymentFacetV1.getContractAddressAt(0)).to.eq(
           ethers.constants.AddressZero
         );
@@ -217,7 +210,7 @@ describe("SpotPaymentFacetV1", async () => {
 
         expect(await myTestERC20.balanceOf(signers[0].address)).to.eq(180000);
         expect(await myTestERC20.balanceOf(signers[1].address)).to.eq(20000);
-        expect(transfer).to.emit(spotPaymentFacetV1, "TransferSuccessEvent");
+        expect(transfer).to.emit(spotPaymentFacetV1, "TransferSuccess");
 
         expect(await spotPaymentFacetV1.getContractAddressAt(0)).to.eq(
           myTestERC20.address
