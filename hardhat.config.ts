@@ -52,6 +52,10 @@ const config: HardhatUserConfig = {
       url: process.env.MAINNET_RPC_URL,
       accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
     },
+    bsc_testnet: {
+      url: process.env.BSC_TESTNET_RPC_URL,
+      accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
+    },
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_PRIVATE_KEY,
