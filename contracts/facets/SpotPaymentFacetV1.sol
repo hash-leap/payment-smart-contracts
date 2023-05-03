@@ -8,8 +8,9 @@ pragma solidity ^0.8.18;
 * additional functionalities like tagging, etc.
 /******************************************************************************/
  
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ISpotPaymentFacetV1 } from "../interfaces/ISpotPaymentFacetV1.sol";
-import { IERC20 } from "../interfaces/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "hardhat/console.sol";
 
 contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
@@ -91,10 +92,7 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
             );
 
             // transfer the tokens to the recipient
-            require(
-                token.transferFrom(msg.sender, _recipient, _amount),
-                "Transfer failed"
-            );
+            SafeERC20.safeTransferFrom(token, msg.sender, _recipient, _amount);
         } else {
             // Invalid contract type
             revert("Invalid contract type");
