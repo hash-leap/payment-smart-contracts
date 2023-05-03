@@ -6,6 +6,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import "./tasks/eventSubscription";
+import "./tasks/simulatePaymentTransaction";
 
 task("accounts", "Prints the list of accounts", async (_, hre) => {
   const accounts = await hre.ethers.getSigners();
