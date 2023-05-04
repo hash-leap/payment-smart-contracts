@@ -3,6 +3,7 @@ import { task, types } from "hardhat/config";
 import * as dotenv from "dotenv";
 import * as SpotPaymentJson from "./../src/artifacts/contracts/facets/SpotPaymentFacetV1.sol/SpotPaymentFacetV1.json";
 import { ethers } from "ethers";
+import Config from "./../config";
 dotenv.config();
 
 task("event-subscription", "Subscribe to events")
@@ -14,12 +15,12 @@ task("event-subscription", "Subscribe to events")
   )
   .setAction(async ({ address }, hre) => {
     return new Promise(() => {
-      const networkName = hre.network.name;
-      const apiKey = String(process.env.INFURA_API_KEY);
-      const provider = new ethers.providers.InfuraWebSocketProvider(
-        networkName,
-        apiKey
+      const networkName: string = hre.network.name;
+
+      const provider = new ethers.providers.WebSocketProvider(
+        (Config.wssUrl as Record<string, string>)[networkName]
       );
+
       const wallet = new ethers.Wallet(String(process.env.ACCOUNT_PRIVATE_KEY));
       console.log(`Connected to the wallet address ${wallet.address}`);
 
@@ -58,9 +59,6 @@ task("event-subscription", "Subscribe to events")
             paymentRef,
           };
           console.log({ emittedEvent });
-          console.log(
-            "Make an api request and probably log this in a service to kick off another event"
-          );
           console.log({ event });
         }
       );

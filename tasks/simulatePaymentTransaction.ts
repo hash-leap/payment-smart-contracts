@@ -6,6 +6,8 @@ import { MyTestERC20__factory } from "../typechain-types";
 import { ethers } from "ethers";
 dotenv.config();
 
+import Config from "./../config";
+
 // USAGE:: This task is to test manually if everything is working.
 // For erc20
 // npx hardhat simulate-payment --token-type 1 --network sepolia --amount 1 --token-address 0x6f14c02fc1f78322cfd7d707ab90f18bad3b54f5 --recipient 0x270Fe7cB0F0a98e4c9ABe1E2b1B82eB9aC848cDA
@@ -32,13 +34,12 @@ task("simulate-payment", "Simulate a payment transaction")
   .setAction(
     async ({ tokenType, address, amount, tokenAddress, recipient }, hre) => {
       const networkName = hre.network.name;
-      const apiKey = String(process.env.INFURA_API_KEY);
 
-      const provider = new ethers.providers.InfuraProvider(networkName, apiKey);
-
-      const wallet = new ethers.Wallet(
-        String(process.env.NON_DEPLOYER_ACCOUNT_PRIVATE_KEY)
+      const provider = new ethers.providers.JsonRpcProvider(
+        (Config.rpcUrl as Record<string, string>)[networkName]
       );
+
+      const wallet = new ethers.Wallet(Config.privateKeys.nonDeployer);
       console.log(`Connected to the wallet address ${wallet.address}`);
 
       const signer = wallet.connect(provider);
@@ -60,7 +61,7 @@ task("simulate-payment", "Simulate a payment transaction")
         const stablecoinContract = await contractFactory.attach(tokenAddress);
         await stablecoinContract.approve(
           String(process.env.DIAMOND_ADDRESS),
-          transferAmount
+          transferAmount.add("1")
         );
 
         transaction = await contract.transfer(

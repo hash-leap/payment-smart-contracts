@@ -7,6 +7,7 @@ dotenv.config();
 
 import "./tasks/eventSubscription";
 import "./tasks/simulatePaymentTransaction";
+import Config from "./config";
 
 task("accounts", "Prints the list of accounts", async (_, hre) => {
   const accounts = await hre.ethers.getSigners();
@@ -23,6 +24,7 @@ task("account", "Prints the account at the index")
     console.log(accounts[taskArgs.index].address);
   });
 
+const accountKey = Config.privateKeys.deployer;
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.18",
@@ -41,24 +43,44 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {},
     goerli: {
-      url: process.env.GOERLI_RPC_URL,
-      accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
+      url: Config.rpcUrl.goerli,
+      accounts: [accountKey],
     },
     sepolia: {
-      url: process.env.SEPOLIA_RPC_URL,
-      accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
+      url: Config.rpcUrl.sepolia,
+      accounts: [accountKey],
     },
     mainnet: {
-      url: process.env.MAINNET_RPC_URL,
-      accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
+      url: Config.rpcUrl.mainnet,
+      accounts: [accountKey],
     },
     bsc_testnet: {
-      url: process.env.BSC_TESTNET_RPC_URL,
-      accounts: [String(process.env.ACCOUNT_PRIVATE_KEY)],
+      url: Config.rpcUrl.bsc_testnet,
+      accounts: [accountKey],
     },
   },
+  // find all supported networks by:
+  // npx hardhat verify --list-networks
+  // https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify#multiple-api-keys-and-alternative-block-explorers
   etherscan: {
-    apiKey: process.env.ETHERSCAN_PRIVATE_KEY,
+    apiKey: {
+      mainnet: Config.privateKeys.etherscan,
+      sepolia: Config.privateKeys.etherscan,
+      goerli: Config.privateKeys.etherscan,
+      bsc: Config.privateKeys.bscscan,
+      bscTestnet: Config.privateKeys.bscscan,
+      // TODO: needs updating before going live on below chains
+      polygon: Config.privateKeys.etherscan,
+      polygonMumbai: Config.privateKeys.etherscan,
+      arbitrumGoerli: Config.privateKeys.etherscan,
+      arbitrumOne: Config.privateKeys.etherscan,
+      avalanche: Config.privateKeys.etherscan,
+      avalancheFujiTestnet: Config.privateKeys.etherscan,
+      optimisticEthereum: Config.privateKeys.etherscan,
+      optimisticGoerli: Config.privateKeys.etherscan,
+      aurora: Config.privateKeys.etherscan,
+      auroraTestnet: Config.privateKeys.etherscan,
+    },
   },
   paths: {
     artifacts: "./src/artifacts",
