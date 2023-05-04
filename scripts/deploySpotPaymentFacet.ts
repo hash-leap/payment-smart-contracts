@@ -1,9 +1,14 @@
 import { ethers } from "hardhat";
+import hre from "hardhat";
 import { getSelectors, FacetCutAction } from "./libraries/diamond";
 import * as dotenv from "dotenv";
 dotenv.config();
 
+import Config from "./../config";
+
 export async function deploySpotPaymentFacetV1() {
+  const networkName = hre.network.name;
+
   const SpotPaymentFacetV1 = await ethers.getContractFactory(
     "SpotPaymentFacetV1"
   );
@@ -11,7 +16,7 @@ export async function deploySpotPaymentFacetV1() {
   await spotPaymentFacetV1.deployed();
   const diamondCutFacet = await ethers.getContractAt(
     "DiamondCutFacet",
-    String(process.env.DIAMOND_ADDRESS)
+    (Config.contractAddresses.diamond as Record<string, string>)[networkName]
   );
 
   const zeroAddress = ethers.constants.AddressZero;

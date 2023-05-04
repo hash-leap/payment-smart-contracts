@@ -21,12 +21,15 @@ task("event-subscription", "Subscribe to events")
         (Config.wssUrl as Record<string, string>)[networkName]
       );
 
-      const wallet = new ethers.Wallet(String(process.env.ACCOUNT_PRIVATE_KEY));
+      const wallet = new ethers.Wallet(Config.privateKeys.deployer);
       console.log(`Connected to the wallet address ${wallet.address}`);
 
       const signer = wallet.connect(provider);
-      const contractAddress = address || String(process.env.DIAMOND_ADDRESS);
-      // contractAddress will change depending on the network, pass the diamond address via command line
+      const contractAddress =
+        address ||
+        (Config.contractAddresses.diamond as Record<string, string>)[
+          networkName
+        ];
 
       const contract = new ethers.Contract(
         contractAddress,
