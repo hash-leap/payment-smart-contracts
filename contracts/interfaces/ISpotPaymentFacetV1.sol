@@ -26,7 +26,8 @@ interface ISpotPaymentFacetV1 {
       uint256 _amount,
       ContractType _contractType,
       string[] calldata _tags,
-      string calldata _paymentRef
+      string calldata _paymentRef,
+      string calldata _paymentType
     ) payable external returns(bool);
 
     function getContractAddressCount() external view returns(uint16);
@@ -36,6 +37,7 @@ interface ISpotPaymentFacetV1 {
     event TransferSuccess(
       address indexed sender, address indexed recipient,
       address indexed tokenAddress, string text, string[] tags,
-      uint256 amount, uint256 datetime, string paymentRef
+      uint256 amount, uint256 datetime, string paymentRef, string paymentType,
+      uint256 blockNumber
     );
 }

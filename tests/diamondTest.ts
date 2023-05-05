@@ -24,7 +24,7 @@ describe("DiamondTest", async () => {
   const addresses: string[] = [];
   let signers: SignerWithAddress[];
   const spotPaymentFacetV1Functions = [
-    "transfer(address,address,uint256,uint8,string[],string)",
+    "transfer(address,address,uint256,uint8,string[],string,string)",
     "getContractAddressCount()",
     "getContractAddressAt(uint16)",
     "getTransferAmount(address)",
@@ -138,7 +138,8 @@ describe("DiamondTest", async () => {
       20000,
       1,
       ["tag1", "tag2"],
-      "invoiceNumber"
+      "invoiceNumber",
+      "invoice"
     );
     expect(await myTestERC20.balanceOf(signers[0].address)).to.eq(180000);
     expect(await myTestERC20.balanceOf(signers[1].address)).to.eq(20000);
@@ -161,6 +162,7 @@ describe("DiamondTest", async () => {
       0,
       ["tag1", "tag2"],
       "invoiceNumber",
+      "invoice",
       {
         value: ethers.utils.parseUnits("1", "ether"),
       }

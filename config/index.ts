@@ -46,8 +46,8 @@ export default {
       bsc_testnet: "0x5ed241d67d856c138bdd4c4191ee188b24e800bf",
     },
     spotPaymentFacet: {
-      sepolia: "0x05cd10d222f33f30c065052a323938e43b90fee4",
-      bsc_testnet: "0xd72bcf6e82936a7f5145a28b964c3ef46875b817",
+      sepolia: "0x7B6C3B617Fd3D46d4c7784598cF72D41f2d208C7",
+      bsc_testnet: "0xd9d13A65138Afd6439109F2134D78797f4ac2907",
     },
   },
 };

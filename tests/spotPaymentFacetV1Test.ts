@@ -30,6 +30,7 @@ describe("SpotPaymentFacetV1", async () => {
             0,
             ["tag1", "tag2"],
             "invoiceNumber",
+            "invoice",
             {
               value: ethers.utils.parseUnits("0", "ether"),
             }
@@ -46,6 +47,7 @@ describe("SpotPaymentFacetV1", async () => {
             0,
             ["tag1", "tag2"],
             "invoiceNumber",
+            "invoice",
             {
               value: ethers.utils.parseUnits("0.0001", "ether"),
             }
@@ -62,6 +64,7 @@ describe("SpotPaymentFacetV1", async () => {
             0,
             ["tag1", "tag2"],
             "invoiceNumber",
+            "invoice",
             {
               value: ethers.utils.parseUnits("0.1", "ether"),
             }
@@ -78,6 +81,7 @@ describe("SpotPaymentFacetV1", async () => {
             0,
             ["tag1", "tag2"],
             "invoiceNumber",
+            "invoice",
             {
               value: ethers.utils.parseUnits("1", "ether"),
             }
@@ -104,6 +108,7 @@ describe("SpotPaymentFacetV1", async () => {
           0,
           ["tag1", "tag2"],
           "invoiceNumber",
+          "invoice",
           {
             value: ethers.utils.parseUnits("1", "ether"),
           }
@@ -157,7 +162,8 @@ describe("SpotPaymentFacetV1", async () => {
             20000,
             1,
             ["tag1", "tag2"],
-            "invoiceNumber"
+            "invoiceNumber",
+            "invoice"
           )
         ).to.be.revertedWith("Same account transfer is not allowed");
       });
@@ -173,7 +179,8 @@ describe("SpotPaymentFacetV1", async () => {
             20000,
             1,
             ["tag1", "tag2"],
-            "invoiceNumber"
+            "invoiceNumber",
+            "invoice"
           )
         ).to.be.revertedWith("Insufficient allowance");
       });
@@ -189,7 +196,8 @@ describe("SpotPaymentFacetV1", async () => {
             20000,
             1,
             ["tag1", "tag2"],
-            "invoiceNumber"
+            "invoiceNumber",
+            "invoice"
           )
         ).to.be.revertedWith("Insufficient token balance");
       });
@@ -205,7 +213,8 @@ describe("SpotPaymentFacetV1", async () => {
           20000,
           1,
           ["tag1", "tag2"],
-          "invoiceNumber"
+          "invoiceNumber",
+          "invoice"
         );
 
         expect(await myTestERC20.balanceOf(signers[0].address)).to.eq(180000);
@@ -250,7 +259,8 @@ describe("SpotPaymentFacetV1", async () => {
           20000,
           1,
           ["tag1", "tag2"],
-          "invoiceNumber"
+          "invoiceNumber",
+          "invoice"
         );
       }
 
@@ -262,6 +272,7 @@ describe("SpotPaymentFacetV1", async () => {
           0,
           ["tag1", "tag2"],
           "invoiceNumber",
+          "invoice",
           {
             value: ethers.utils.parseUnits("1", "ether"),
           }

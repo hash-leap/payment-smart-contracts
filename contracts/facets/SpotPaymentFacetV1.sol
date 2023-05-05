@@ -40,7 +40,8 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
         uint256 _amount,
         ContractType _contractType,
         string[] calldata _tags,
-        string calldata _paymentRef
+        string calldata _paymentRef,
+        string calldata _paymentType
     ) payable external returns(bool){
         require(!lock, "Error: Re-entering transfer method");
         require(_amount > 0, "Error: Amount must be greater than zero");
@@ -109,7 +110,9 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
             _tags,
             _amount,
             block.timestamp,
-            _paymentRef
+            _paymentRef,
+            _paymentType,
+            block.number
         );
 
         lock = false;

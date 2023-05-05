@@ -48,6 +48,8 @@ task("event-subscription", "Subscribe to events")
           amount,
           datetime,
           paymentRef,
+          paymentType,
+          blockNumber,
           event
         ) => {
           const emittedEvent = {
@@ -60,6 +62,8 @@ task("event-subscription", "Subscribe to events")
             tags,
             datetime,
             paymentRef,
+            paymentType,
+            blockNumber,
           };
           console.log({ emittedEvent });
           console.log({ event });

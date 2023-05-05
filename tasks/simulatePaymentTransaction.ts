@@ -49,6 +49,7 @@ task("simulate-payment", "Simulate a payment transaction")
 
     const tags = ["test2", "USDC", "Sad Panda"];
     const paymentRef = "#sc02";
+    const paymentType = "invoice";
     let transaction;
 
     if (tokenType == 1) {
@@ -65,7 +66,8 @@ task("simulate-payment", "Simulate a payment transaction")
         transferAmount,
         tokenType,
         tags,
-        paymentRef
+        paymentRef,
+        paymentType
       );
     } else {
       transaction = await contract.transfer(
@@ -75,6 +77,7 @@ task("simulate-payment", "Simulate a payment transaction")
         tokenType,
         tags,
         paymentRef,
+        paymentType,
         {
           value: ethers.utils.parseUnits(String(amount), "ether"),
           gasLimit: 800000,
