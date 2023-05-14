@@ -23,24 +23,11 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   uint256 public constant MINIMUM_DURATION = 1 days;
   uint256 public constant MAXIMUM_DURATION = 365 days;
 
-  // every plan will have an owner and an owner can have many plans
-  struct SubscriptionPlan {
-    uint256 fee;
-    bool autoRenew;
-    address owner;
-    uint256 duration; // in seconds
-    uint256 paymentInterval; // in seconds
-    // mapping(address => uint256) subscribers;
-  }
-
   // Stores all subscription plan details mapped by their sequence
   mapping(uint256 => SubscriptionPlan) private plans;
   // total number of subscription plans to keep track off
   uint256 private numPlans;
   BitMaps.BitMap private activePlanIds;
-
-  event NewPlan(uint256 planId, uint256 duration, uint256 fee, bool autoRenew, address subscriptionOwner);
-  event NewSubscription(uint256 planId, address subscriber, uint256 startTime, uint256 endTime);
 
   // subscriptionOwners = plan[] // a subset of plans
 
@@ -55,9 +42,6 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
 
   // Plans active for a subscription owner
   mapping(address => uint256[]) private plansActive;
-
-  error NotSubscriptionOwner(address owner, address caller);
-  error MaxPlanCountReached(address caller, uint256 activePlansCount, uint256 plansAllowedCount);
 
   modifier onlySubscriptionOwner(uint256 planId, address owner) {
     if (msg.sender != plans[planId].owner) {
@@ -117,7 +101,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
     }
   }
 
-  function subscribe(uint256 _planId, address _tokenContractAddress) public payable {
+  function subscribe(uint256 _planId, address _tokenContractAddress) external payable {
     SubscriptionPlan storage plan = plans[_planId];
 
     require(activePlanIds.get(_planId) == true, "Subscription: plan not found");
@@ -139,7 +123,6 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
 
     // TODO: Fix the below two lines for paymentFrequncy instead of charging all at once
     IERC20(plan.owner).transferFrom(msg.sender, plan.owner, plan.fee); 
-    emit Charge(_planId, msg.sender, 0, 100);
+    emit ChargeSuccess(_planId, msg.sender, 0, 100);
   }
-    event Charge(uint256 planId, address subscriber, uint256 startTime, uint256 endTime);
 }
