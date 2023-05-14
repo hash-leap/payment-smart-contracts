@@ -22,6 +22,8 @@ interface ISubscriptionFacetV1 {
   function createPlan(uint256 price, bool autoRenew, uint256 duration, uint256 paymentInterval) external;
   function removePlan(uint256 _planId) external;
   function subscribe(uint256 _planId, address _tokenContractAddress) external payable;
+  function cancelSubscription(uint256 _planId) external;
+  function getPlan(uint256 _planId) external view returns (uint256 duration, uint256 fee, bool autoRenew, address owner);
 
 
   error NotSubscriptionOwner(address owner, address caller);

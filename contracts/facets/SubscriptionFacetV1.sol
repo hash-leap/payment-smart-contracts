@@ -125,4 +125,22 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
     IERC20(plan.owner).transferFrom(msg.sender, plan.owner, plan.fee); 
     emit ChargeSuccess(_planId, msg.sender, 0, 100);
   }
+
+  function cancelSubscription(uint256 _planId) external {
+    require(activePlanIds.get(_planId) == true, "Subscription: plan not found");
+    require(subscribers[msg.sender][_planId] == true, "Subscription: not subscribed");
+    subscribers[msg.sender][_planId] = false;
+    // TODO: Add logic to not take out money
+  }
+
+  function getPlan(uint256 _planId) external view returns (uint256 duration, uint256 fee, bool autoRenew, address owner) {
+    require(activePlanIds.get(_planId) == true, "Subscription: plan not found");
+
+    SubscriptionPlan storage plan = plans[_planId];
+    duration = plan.duration;
+    fee = plan.fee;
+    autoRenew = plan.autoRenew;
+    owner = plan.owner;
+  }
+
 }
