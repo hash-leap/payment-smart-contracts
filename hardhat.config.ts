@@ -8,6 +8,7 @@ dotenv.config();
 
 import "./tasks/eventSubscription";
 import "./tasks/simulatePaymentTransaction";
+import "./tasks/simulateCrossChainTransaction";
 import Config from "./config";
 
 task("accounts", "Prints the list of accounts", async (_, hre) => {
