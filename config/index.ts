@@ -49,5 +49,11 @@ export default {
       sepolia: "0x7B6C3B617Fd3D46d4c7784598cF72D41f2d208C7",
       bsc_testnet: "0xd9d13A65138Afd6439109F2134D78797f4ac2907",
     },
+    subscriptionFacet: {
+      bsc_testnet: "",
+    },
+    crossChainPayment: {
+      bsc_testnet: "0xD58B0ee3f7f8bC6E46B287aaA4f83a55cEC176F2",
+    },
   },
 };
