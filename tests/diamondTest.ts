@@ -12,6 +12,7 @@ import { assert, expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber, Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import sinon from "sinon";
 
 describe("DiamondTest", async () => {
   let diamondAddress: string;
@@ -29,6 +30,20 @@ describe("DiamondTest", async () => {
     "getContractAddressAt(uint16)",
     "getTransferAmount(address)",
   ];
+
+  const crossChainPaymentFacetV1Functions = [
+    "hlCrossChainTransfer(string,string,address,string,uint256,address)",
+    "hlGetAxelarContract(string)",
+    "hlSetAxelarContract(string,address)",
+  ];
+
+  before(() => {
+    sinon.stub(console, "log");
+  });
+
+  after(() => {
+    sinon.restore();
+  });
 
   before(async () => {
     diamondAddress = await deployDiamond(); // deploy script deploys the Diamond and top level facets
@@ -256,6 +271,76 @@ describe("DiamondTest", async () => {
     );
   });
 
+  it("should add CrossChainPayment functions", async () => {
+    const CrossChainPaymentFacetV1 = await ethers.getContractFactory(
+      "CrossChainPaymentFacetV1"
+    );
+    const crossChainPaymentFacetV1 = await CrossChainPaymentFacetV1.deploy();
+    await crossChainPaymentFacetV1.deployed();
+    addresses.push(crossChainPaymentFacetV1.address);
+    const selectors = getSelectors(crossChainPaymentFacetV1).get(
+      crossChainPaymentFacetV1Functions
+    );
+    tx = await diamondCutFacet.diamondCut(
+      [
+        {
+          facetAddress: addresses.at(-1),
+          action: FacetCutAction.Add,
+          functionSelectors: selectors,
+        },
+      ],
+      ethers.constants.AddressZero,
+      "0x",
+      { gasLimit: 800000 }
+    );
+    receipt = await tx.wait();
+    if (!receipt.status) {
+      throw Error(`Diamond upgrade failed: ${tx.hash}`);
+    }
+    result = await diamondLoupeFacet.facetFunctionSelectors(addresses.at(-1));
+    assert.sameMembers(result, selectors);
+  });
+
+  it("should remove crossChainPaymentFacetV1 functions", async () => {
+    const CrossChainPaymentFacetV1 = await ethers.getContractFactory(
+      "CrossChainPaymentFacetV1"
+    );
+    const crossChainPaymentFacetV1 = await CrossChainPaymentFacetV1.deploy();
+    const selectors = getSelectors(crossChainPaymentFacetV1).get(
+      crossChainPaymentFacetV1Functions
+    );
+
+    tx = await diamondCutFacet.diamondCut(
+      [
+        {
+          facetAddress: ethers.constants.AddressZero,
+          action: FacetCutAction.Remove,
+          functionSelectors: selectors,
+        },
+      ],
+      ethers.constants.AddressZero,
+      "0x",
+      { gasLimit: 800000 }
+    );
+    receipt = await tx.wait();
+    if (!receipt.status) {
+      throw Error(`Diamond upgrade failed: ${tx.hash}`);
+    }
+    result = await diamondLoupeFacet.facetFunctionSelectors(
+      crossChainPaymentFacetV1.address
+    );
+    assert.sameMembers(
+      result,
+      getSelectors(crossChainPaymentFacetV1).remove(
+        crossChainPaymentFacetV1Functions.concat([
+          "owner()",
+          "renounceOwnership()",
+          "transferOwnership(address)",
+        ])
+      )
+    );
+  });
+
   it("remove all functions and facets except 'diamondCut' and 'facets'", async () => {
     let selectors: Selectors = [] as unknown as Selectors;
     let facets = await diamondLoupeFacet.facets();
@@ -298,6 +383,11 @@ describe("DiamondTest", async () => {
       "SpotPaymentFacetV1"
     );
     const spotPaymentFacetV1 = await SpotPaymentFacetV1.deploy();
+
+    const CrossChainPaymentFacetV1 = await ethers.getContractFactory(
+      "CrossChainPaymentFacetV1"
+    );
+    const crossChainPaymentFacetV1 = await CrossChainPaymentFacetV1.deploy();
     // Any number of functions from any number of facets can be added/replaced/removed in a
     // single transaction
     const cut = [
@@ -318,6 +408,13 @@ describe("DiamondTest", async () => {
           spotPaymentFacetV1Functions
         ),
       },
+      {
+        facetAddress: addresses[4],
+        action: FacetCutAction.Add,
+        functionSelectors: getSelectors(crossChainPaymentFacetV1).get(
+          crossChainPaymentFacetV1Functions
+        ),
+      },
       // Add new contracts here
     ];
     tx = await diamondCutFacet.diamondCut(
@@ -332,13 +429,14 @@ describe("DiamondTest", async () => {
     }
     const facets = await diamondLoupeFacet.facets();
     const facetAddresses = await diamondLoupeFacet.facetAddresses();
-    assert.equal(facetAddresses.length, 4);
-    assert.equal(facets.length, 4);
+    assert.equal(facetAddresses.length, 5);
+    assert.equal(facets.length, 5);
     assert.sameMembers(facetAddresses, addresses);
     assert.equal(facets[0][0], facetAddresses[0], "first facet");
     assert.equal(facets[1][0], facetAddresses[1], "second facet");
     assert.equal(facets[2][0], facetAddresses[2], "third facet");
     assert.equal(facets[3][0], facetAddresses[3], "fourth facet");
+    assert.equal(facets[4][0], facetAddresses[4], "fifth facet");
     // Add new contract assertion here
     assert.sameMembers(
       facets[findAddressPositionInFacets(addresses[0], facets)][1],
@@ -355,6 +453,10 @@ describe("DiamondTest", async () => {
     assert.sameMembers(
       facets[findAddressPositionInFacets(addresses[3], facets)][1],
       getSelectors(spotPaymentFacetV1).get(spotPaymentFacetV1Functions)
+    );
+    assert.sameMembers(
+      facets[findAddressPositionInFacets(addresses[4], facets)][1],
+      getSelectors(crossChainPaymentFacetV1)
     );
     // Add new contracts here
   });
