@@ -24,7 +24,7 @@ export async function deployCrossChainPaymentFacetV1() {
     [
       {
         facetAddress: crossChainPaymentFacetV1.address,
-        action: FacetCutAction.Replace,
+        action: FacetCutAction.Add,
         functionSelectors: getSelectors(crossChainPaymentFacetV1),
       },
     ],
