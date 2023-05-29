@@ -16,18 +16,13 @@ contract CrossChainPaymentFacetV1 {
   IERC20 private token;
 
   event TransferSuccess(
-    address indexed sender, address indexed recipient,
+    address indexed sender, string indexed recipient,
     string indexed tokenSymbol, string text,
     uint256 amount, uint256 datetime,
     uint256 blockNumber, string targetChain, string sourceChain
   );
 
   mapping(bytes32 => address) private axelarContracts;
-
-  constructor() {
-    axelarContracts[keccak256(bytes('avalanche'))] = 0xC249632c2D40b9001FE907806902f63038B737Ab;
-    axelarContracts[keccak256(bytes('binance'))] = 0x4D147dCb984e6affEEC47e44293DA442580A3Ec0;
-  }
 
   // Only admin can update the axelar contract addresses
   function setAxelarContract(string calldata chainName, address contractAddress) external {
@@ -40,22 +35,36 @@ contract CrossChainPaymentFacetV1 {
     return axelarContracts[keccak256(bytes(chainName))];
   }
 
-  function crossChainTransfer(
+  function transfer(
     string memory _sourceChain, 
     string memory _targetChain, 
-    address _recipient,
+    string memory _recipient,
     string memory _tokenSymbol,
-    uint256 _amount
+    uint256 _amount,
+    address _tokenContractAddress
   ) external {
 
-    token.approve(axelarContracts[keccak256(bytes(_sourceChain))], _amount);
+    address sourceChainAddress = axelarContracts[keccak256(bytes(_sourceChain))] ;
 
-    IAxelar axelar = IAxelar(axelarContracts[keccak256(bytes(_sourceChain))]);
+    require (sourceChainAddress != address(0x0), "Source chain address not set");
+
+    token = IERC20(_tokenContractAddress);
+    // e.g. set to USDC contract
+    // token = IERC20(0x64544969ed7EBf5f083679233325356EbE738930) ;
+
+    require (_tokenContractAddress != address(0x0), "Wrong token contract");
+
+    token.transferFrom(msg.sender, address(this), _amount);
+
+    token.approve(sourceChainAddress, _amount);
+
+    IAxelar axelar = IAxelar(sourceChainAddress);
+
     axelar.sendToken(
-        _targetChain, // destination chain name
-        _recipient, // some destination wallet address (should be your own)
-        _tokenSymbol, // asset symbol
-        _amount // amount (in atomic units)
+      _targetChain, // destination chain name
+      _recipient, // some destination wallet address (should be your own)
+      _tokenSymbol, // asset symbol
+      _amount // amount (in atomic units)
     );
 
     emit TransferSuccess(
