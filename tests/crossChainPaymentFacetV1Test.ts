@@ -126,7 +126,9 @@ describe("CrossChainPaymentFacetV1", async () => {
           recipient.address,
           "USDC",
           1000,
-          "0x64544969ed7EBf5f083679233325356EbE738930"
+          "0x64544969ed7EBf5f083679233325356EbE738930",
+          "payref",
+          ["tag1"]
         )
       ).to.be.revertedWith("Source chain address not set");
     });
@@ -139,7 +141,9 @@ describe("CrossChainPaymentFacetV1", async () => {
           recipient.address,
           "USDC",
           1000,
-          ethers.constants.AddressZero
+          ethers.constants.AddressZero,
+          "payref",
+          ["tag1"]
         )
       ).to.be.revertedWith("Wrong token contract");
     });
@@ -163,7 +167,9 @@ describe("CrossChainPaymentFacetV1", async () => {
         recipient.address,
         "USDC",
         1000,
-        myTestERC20.address
+        myTestERC20.address,
+        "payref",
+        ["tag1"]
       );
 
       expect(await myTestERC20.balanceOf(owner.address)).to.equal(

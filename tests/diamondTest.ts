@@ -32,7 +32,7 @@ describe("DiamondTest", async () => {
   ];
 
   const crossChainPaymentFacetV1Functions = [
-    "transfer(string,string,string,string,uint256,address)",
+    "transfer(string,string,string,string,uint256,address,string,string[])",
     "getAxelarContract(string)",
     "setAxelarContract(string,address)",
   ];

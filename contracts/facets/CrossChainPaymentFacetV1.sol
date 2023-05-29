@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 /******************************************************************************\
-* @title CrossPaymentFacetV1
+* @title CrossChainPaymentFacetV1
 * @author Nasir Jamal <nas@hashleap.io> (https://twitter.com/_nasj)
 * @dev: Contract to transfer tokens cross chain between different parties along with
 * additional functionalities like tagging, etc.
@@ -11,16 +11,10 @@ pragma solidity ^0.8.18;
 import { IAxelar } from "../interfaces/IAxelar.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { LibDiamond } from "../libraries/LibDiamond.sol";
+import { ICrossChainPaymentFacetV1 } from "./../interfaces/ICrossChainPaymentFacetV1.sol";
 
-contract CrossChainPaymentFacetV1 {
+contract CrossChainPaymentFacetV1 is ICrossChainPaymentFacetV1 {
   IERC20 private token;
-
-  event TransferSuccess(
-    address indexed sender, string indexed recipient,
-    string indexed tokenSymbol, string text,
-    uint256 amount, uint256 datetime,
-    uint256 blockNumber, string targetChain, string sourceChain
-  );
 
   mapping(bytes32 => address) private axelarContracts;
 
@@ -36,13 +30,15 @@ contract CrossChainPaymentFacetV1 {
   }
 
   function transfer(
-    string memory _sourceChain, 
-    string memory _targetChain, 
-    string memory _recipient,
-    string memory _tokenSymbol,
+    string calldata _sourceChain, 
+    string calldata _targetChain, 
+    string calldata _recipient,
+    string calldata _tokenSymbol,
     uint256 _amount,
-    address _tokenContractAddress
-  ) external {
+    address _tokenContractAddress,
+    string calldata _paymentRef,
+    string[] calldata _tags
+  ) external returns(bool){
 
     address sourceChainAddress = axelarContracts[keccak256(bytes(_sourceChain))] ;
 
@@ -67,17 +63,20 @@ contract CrossChainPaymentFacetV1 {
       _amount // amount (in atomic units)
     );
 
-    emit TransferSuccess(
+    emit CrossChainTransferSuccess(
       msg.sender,
       _recipient,
       _tokenSymbol,
       "HashLeap",
       _amount,
       block.timestamp,
-      block.number,
+      _tags,
+      _paymentRef,
       _targetChain,
       _sourceChain
     );
+
+    return true;
   }
 }
 
