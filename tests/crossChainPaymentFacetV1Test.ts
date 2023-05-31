@@ -153,7 +153,6 @@ describe("CrossChainPaymentFacetV1", async () => {
         "binance"
       );
 
-      console.info({ sourceChainAddress });
       expect(await myTestERC20.balanceOf(owner.address)).to.equal(10000000);
       await myTestERC20.connect(owner).approve(diamondAddress, 1000);
 
