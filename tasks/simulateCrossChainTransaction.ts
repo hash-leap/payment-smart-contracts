@@ -9,7 +9,7 @@ import Config from "./../config";
 
 // USAGE:: This task is to test manually if everything is working.
 // For erc20
-// npx hardhat simulate-cross-chain-payment --token-symbol USDC --source-chain binance --network bsc_testnet --target-chain avalanche --amount 2 --recipient 0x270Fe7cB0F0a98e4c9ABe1E2b1B82eB9aC848cDA --erc-20-contract-address 0x64544969ed7EBf5f083679233325356EbE738930
+// npx hardhat simulate-cross-chain-payment --token-symbol aUSDC --source-chain binance --network bsc_testnet --target-chain avalanche --amount 2000000 --recipient 0x270Fe7cB0F0a98e4c9ABe1E2b1B82eB9aC848cDA --erc-20-contract-address 0xc2fA98faB811B785b81c64Ac875b31CC9E40F9D2
 task("simulate-cross-chain-payment", "Simulate cross chain payment transaction")
   .addParam("sourceChain", "e.g. binance", undefined, types.string)
   .addParam("targetChain", "e.g. avalanche", undefined, types.string)
@@ -91,6 +91,8 @@ task("simulate-cross-chain-payment", "Simulate cross chain payment transaction")
         tokenSymbol,
         amount,
         erc20ContractAddress,
+        "ref",
+        ["tag1", "tag2"],
         {
           gasLimit: 800000,
         }

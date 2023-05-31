@@ -53,7 +53,7 @@ export default {
       bsc_testnet: "",
     },
     crossChainPayment: {
-      bsc_testnet: "0xCb6D1bC0A1d2fd1365B32a947F4BC829c2411DB5",
+      bsc_testnet: "0x2e01b711c5FD16e1cd2827E2043d1343AEb6C7fd",
     },
   },
 };
