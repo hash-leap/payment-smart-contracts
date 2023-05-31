@@ -18,17 +18,30 @@ contract CrossChainPaymentFacetV1 is ICrossChainPaymentFacetV1 {
 
   mapping(bytes32 => address) private axelarContracts;
 
-  // Only admin can update the axelar contract addresses
+  /// @notice Only admin can set or update the axelar contract addresses
+  /// @param chainName is name of the chain e.g. polygon or make sure it is same as in their docs
+  /// @param contractAddress is the smart contract address for the chain
   function setAxelarContract(string calldata chainName, address contractAddress) external {
     LibDiamond.enforceIsContractOwner();
     axelarContracts[keccak256(bytes(chainName))] = contractAddress;
   }
 
-  // View the axelar contract addresses
+  /// @notice View the axelar gateway contract address
+  /// @param chainName is name of the chain e.g. polygon or make sure it is same as in their docs
   function getAxelarContract(string calldata chainName) external view returns (address) {
     return axelarContracts[keccak256(bytes(chainName))];
   }
 
+  /// @notice Moves erc20 token across another evm chains using Axelar
+  /// @param _sourceChain is the chain token is sent from
+  /// @param _targetChain is the chain token being sent to
+  /// @param _recipient is the address of recipient, token is being sent to
+  /// @param _tokenSymbol is the symbol of token on the chain e.g. USDC
+  /// @param _amount is the number of tokens being transferred to recipient in atomic units
+  /// @param _tokenContractAddress is the address of the erc 20 token
+  /// @param _paymentRef is hashleap payment reference or identifier so the transaction even can be associated with hashleap
+  /// @param _tags is an array of tags that we want to emit with the event 
+  /// @return boolean is true when completed successfully
   function transfer(
     string calldata _sourceChain, 
     string calldata _targetChain, 
@@ -45,8 +58,6 @@ contract CrossChainPaymentFacetV1 is ICrossChainPaymentFacetV1 {
     require (sourceChainAddress != address(0x0), "Source chain address not set");
 
     token = IERC20(_tokenContractAddress);
-    // e.g. set to USDC contract
-    // token = IERC20(0x64544969ed7EBf5f083679233325356EbE738930) ;
 
     require (_tokenContractAddress != address(0x0), "Wrong token contract");
 
@@ -79,4 +90,3 @@ contract CrossChainPaymentFacetV1 is ICrossChainPaymentFacetV1 {
     return true;
   }
 }
-
