@@ -1,9 +1,10 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { deployDiamond } from "../scripts/deploy";
+import { getSelectors, FacetCutAction } from "../scripts/libraries/diamond";
+
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
-import { deployDiamond } from "../scripts/deploy";
-import { getSelectors, FacetCutAction } from "../scripts/libraries/diamond";
 import sinon from "sinon";
 
 describe("CrossChainPaymentFacetV1", async () => {
@@ -46,7 +47,6 @@ describe("CrossChainPaymentFacetV1", async () => {
       await CrossChainPaymentFacetV1Factory.deploy();
     await crossChainPaymentFacetV1.deployed();
 
-    diamondAddress = await deployDiamond();
     const diamondCutFacet = await ethers.getContractAt(
       "DiamondCutFacet",
       diamondAddress
