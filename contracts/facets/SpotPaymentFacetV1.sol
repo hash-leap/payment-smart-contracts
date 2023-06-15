@@ -11,7 +11,6 @@ pragma solidity ^0.8.18;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ISpotPaymentFacetV1 } from "../interfaces/ISpotPaymentFacetV1.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
 
 contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
     IERC20 private token;

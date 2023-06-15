@@ -1,13 +1,12 @@
-import "@nomiclabs/hardhat-etherscan";
 import "@nomicfoundation/hardhat-toolbox";
-import "solidity-coverage";
 import { task, HardhatUserConfig } from "hardhat/config";
-import "hardhat-gas-reporter";
 import * as dotenv from "dotenv";
 dotenv.config();
 
 import "./tasks/eventSubscription";
 import "./tasks/simulatePaymentTransaction";
+import "./tasks/simulateCrossChainTransaction";
+import "./tasks/facetQuery";
 import Config from "./config";
 
 task("accounts", "Prints the list of accounts", async (_, hre) => {
@@ -34,6 +33,7 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 10000,
       },
+      viaIR: true,
     },
   },
   defaultNetwork: "localhost",
