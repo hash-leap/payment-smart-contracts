@@ -750,8 +750,9 @@ describe("SubscriptionFacetV1", async () => {
   describe("getPlan", () => {
     describe("when plan doesn't exist for the provided id", () => {
       it("should raise an exception", async () => {
-        await expect(subscriptionFacetV1.getPlan(2)).to.be.revertedWith(
-          "Subscription: plan not found"
+        await expect(subscriptionFacetV1.getPlan(2)).revertedWithCustomError(
+          subscriptionFacetV1,
+          "PlanNotFound"
         );
       });
     });
@@ -773,6 +774,18 @@ describe("SubscriptionFacetV1", async () => {
       });
 
       it("should return the subscription plan", async () => {
+        const plan = await subscriptionFacetV1.getPlan(0);
+        expect(plan.duration).to.eq(365);
+        expect(plan.fee).to.eq(1000);
+        expect(plan.autoRenew).to.eq(true);
+        expect(plan.owner).to.eq(nonOwner.address);
+        expect(ethers.utils.parseBytes32String(plan.title)).to.eq(
+          "Create to test plan"
+        );
+      });
+
+      it("should return the subscription plan even if plan is inactive", async () => {
+        await subscriptionFacetV1.connect(nonOwner).stopPlan(0);
         const plan = await subscriptionFacetV1.getPlan(0);
         expect(plan.duration).to.eq(365);
         expect(plan.fee).to.eq(1000);
