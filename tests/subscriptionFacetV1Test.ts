@@ -6,6 +6,7 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { Contract } from "ethers";
 import sinon from "sinon";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("SubscriptionFacetV1", async () => {
   let signers: SignerWithAddress[];
@@ -435,6 +436,7 @@ describe("SubscriptionFacetV1", async () => {
             .connect(signers[2])
             .subscribe(0, myTestERC20.address);
         });
+
         it("should set up all data", async () => {
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
 
@@ -447,6 +449,88 @@ describe("SubscriptionFacetV1", async () => {
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
           expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
           expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
+        });
+
+        it("should revert if charged sooner than expected", async () => {
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
+
+          const subscribeTx = await subscriptionFacetV1.chargeFee(
+            0,
+            myTestERC20.address,
+            signers[2].address
+          );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
+          expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
+
+          await expect(
+            subscriptionFacetV1.chargeFee(
+              0,
+              myTestERC20.address,
+              signers[2].address
+            )
+          ).to.be.revertedWith("Duplicate subscription payment");
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
+        });
+
+        it("should not revert if charged after the expected time", async () => {
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
+
+          const subscribeTx = await subscriptionFacetV1.chargeFee(
+            0,
+            myTestERC20.address,
+            signers[2].address
+          );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
+          expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
+
+          await time.increase(14 * 24 * 3600);
+          await subscriptionFacetV1.chargeFee(
+            0,
+            myTestERC20.address,
+            signers[2].address
+          );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2062);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(138);
+        });
+
+        it("should allow charging upto 3 days in advance", async () => {
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
+
+          const subscribeTx = await subscriptionFacetV1.chargeFee(
+            0,
+            myTestERC20.address,
+            signers[2].address
+          );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
+          expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
+
+          await time.increase(11 * 24 * 3600);
+          await subscriptionFacetV1.chargeFee(
+            0,
+            myTestERC20.address,
+            signers[2].address
+          );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2062);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(138);
+
+          await time.increase(10 * 24 * 3600);
+          await expect(
+            subscriptionFacetV1.chargeFee(
+              0,
+              myTestERC20.address,
+              signers[2].address
+            )
+          ).to.be.revertedWith("Duplicate subscription payment");
         });
       });
     });

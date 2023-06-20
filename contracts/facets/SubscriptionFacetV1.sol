@@ -51,7 +51,12 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
 
   // Store subscriptions a subscriber has subscribed to
   // uint in the nested mapping is planId
-  mapping(address => mapping(uint => bool)) private subscribers;
+  mapping(address => mapping(uint256 => bool)) private subscribers;
+
+  /// @dev address is the address of the subscriber
+  /// @dev first uint256 in the mapping is the plan id
+  /// @dev second uint256 in the mapping is the last end time of the subscriber's paid plan
+  mapping(address => mapping(uint256 => uint256)) private previousEndTime;
 
   // Plans active for a subscription owner
   mapping(address => uint256[]) private ownerActivePlanTracker;
@@ -174,14 +179,14 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
       revert PlanNotFound(_planId);
     }
 
-    SubscriptionPlan storage plan = plans[_planId];
-
     require(subscribers[msg.sender][_planId] != true, "Plan: already subscribed");
+    subscribers[msg.sender][_planId] = true;
+
+    SubscriptionPlan storage plan = plans[_planId];
 
     uint256 startTime = block.timestamp;
     uint256 endTime = startTime + (plan.duration * 1 days);
 
-    subscribers[msg.sender][_planId] = true;
     chargeFee(_planId, _tokenContractAddress, msg.sender);
 
     emit NewSubscription(_planId, plan.owner, msg.sender, startTime, endTime, plan.fee);
@@ -209,17 +214,29 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
       "Insufficient allowance"
     );
 
-    // require users balance to be greater than or equal to the charged amount
+    // require users balance to be greater than or equal to the amount being charged
     require(
       token.balanceOf(_subscriberAddress) >= charge,
       "Insufficient token balance"
     );
 
+    uint256 startTime = block.timestamp;
+
+    /// @notice clients may charge 3 days in advance and in case of failure may retry 3 times until giving up or cancelling user subscription
+    uint256 startTimeWithBuffer = startTime + 3 days;
+
+    /// @dev if the previousEndTime is set for the subscriber plan that means it is not the first payment
+    /// and we must compare with the previous payment end date to prevent double payment
+    if (previousEndTime[_subscriberAddress][_planId] > 0) {
+      require((startTimeWithBuffer + (plan.paymentInterval * 1 days)) > previousEndTime[_subscriberAddress][_planId], "Duplicate subscription payment");
+
+      startTime = previousEndTime[_subscriberAddress][_planId] + 1;
+    }
+
     SafeERC20.safeTransferFrom(token, _subscriberAddress, plan.owner, charge);
 
-    uint256 startTime = block.timestamp;
-    // TODO: Prevent double charging for the same period
-    uint256 endTime = startTime + (plan.paymentInterval * 1 days);
+    uint256 endTime = (startTime - 1) + (plan.paymentInterval * 1 days);
+    previousEndTime[_subscriberAddress][_planId] = endTime;
 
     emit ChargeSuccess(_planId, plan.owner, _subscriberAddress, startTime, endTime, charge);
   }
