@@ -25,6 +25,13 @@ interface ISubscriptionFacetV1 {
     bytes32 title;
   }
 
+  struct SubscriberPlanTime {
+    uint256 previousEndTime;
+    uint256 previousStartTime;
+    uint256 planEndTime;
+    uint256 planStartTime;
+  }
+
   /**
    * @notice Creates a subscription plan
    * @param _price is the full price of subscription for the duration
@@ -57,7 +64,7 @@ interface ISubscriptionFacetV1 {
    * @param _tokenContractAddress is the erc20 token contract address for the payment
    * @param _subscriberAddress is the address from which payment will be taken
    */
-  function chargeFee(uint256 _planId, address _tokenContractAddress, address _subscriberAddress) external;
+  function chargeFeeBySubscriptionOwner(uint256 _planId, address _tokenContractAddress, address _subscriberAddress) external;
 
   /**
    * @notice Must be called by an subscriber to cancel the subscription

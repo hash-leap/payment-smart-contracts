@@ -54,9 +54,9 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   mapping(address => mapping(uint256 => bool)) private subscribers;
 
   /// @dev address is the address of the subscriber
-  /// @dev first uint256 in the mapping is the plan id
-  /// @dev second uint256 in the mapping is the last end time of the subscriber's paid plan
-  mapping(address => mapping(uint256 => uint256)) private previousEndTime;
+  /// @dev uint256 in the mapping is the plan id
+  /// @dev SubscriberPlanPayments has subscriber plan times
+  mapping(address => mapping(uint256 => SubscriberPlanTime)) private subscriberPlanTime;
 
   // Plans active for a subscription owner
   mapping(address => uint256[]) private ownerActivePlanTracker;
@@ -69,7 +69,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   mapping(address => bool) private blackListedSubscriptionOwners;
 
   modifier onlySubscriptionOwner(uint256 planId, address owner) {
-    if (msg.sender != plans[planId].owner) {
+    if (plans[planId].owner != address(0) && msg.sender != plans[planId].owner) {
       revert NotSubscriptionOwner(owner, msg.sender);
     }
     _;
@@ -187,6 +187,9 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
     uint256 startTime = block.timestamp;
     uint256 endTime = startTime + (plan.duration * 1 days);
 
+    subscriberPlanTime[msg.sender][_planId].planEndTime = endTime;
+    subscriberPlanTime[msg.sender][_planId].planStartTime = startTime;
+
     chargeFee(_planId, _tokenContractAddress, msg.sender);
 
     emit NewSubscription(_planId, plan.owner, msg.sender, startTime, endTime, plan.fee);
@@ -200,7 +203,17 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
    * @param _tokenContractAddress is the erc20 token contract address for the payment
    * @param _subscriberAddress is the address from which payment will be taken
    */
-  function chargeFee(uint256 _planId, address _tokenContractAddress, address _subscriberAddress) public checkPausedOwners(_planId) {
+  function chargeFeeBySubscriptionOwner(
+    uint256 _planId, address _tokenContractAddress, address _subscriberAddress
+  ) public onlySubscriptionOwner(_planId, msg.sender)
+  {
+    chargeFee(_planId, _tokenContractAddress, _subscriberAddress);
+  }
+
+  function chargeFee(
+    uint256 _planId, address _tokenContractAddress, address _subscriberAddress
+  ) internal checkPausedOwners(_planId)
+  {
     SubscriptionPlan memory plan = getPlan(_planId);
 
     require(subscribers[_subscriberAddress][_planId] == true, "Plan: not subscribed");
@@ -220,23 +233,35 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
       "Insufficient token balance"
     );
 
-    uint256 startTime = block.timestamp;
+    SubscriberPlanTime storage planTimes = subscriberPlanTime[_subscriberAddress][_planId];
+
+    uint256 startTime;
+    if (planTimes.previousEndTime > 0) {
+      startTime = planTimes.previousEndTime;
+    } else {
+      // Use block timestamp on first charge which is run straight after the subscribing
+      startTime = block.timestamp;
+    }
 
     /// @notice clients may charge 3 days in advance and in case of failure may retry 3 times until giving up or cancelling user subscription
-    uint256 startTimeWithBuffer = startTime + 3 days;
+    uint256 timeWithBuffer = block.timestamp + 3 days;
 
     /// @dev if the previousEndTime is set for the subscriber plan that means it is not the first payment
     /// and we must compare with the previous payment end date to prevent double payment
-    if (previousEndTime[_subscriberAddress][_planId] > 0) {
-      require((startTimeWithBuffer + (plan.paymentInterval * 1 days)) > previousEndTime[_subscriberAddress][_planId], "Duplicate subscription payment");
+    uint256 previousEndTime = planTimes.previousEndTime;
+    if (previousEndTime > 0) {
+      require((timeWithBuffer + (plan.paymentInterval * 1 days)) > previousEndTime, "Duplicate subscription payment");
 
-      startTime = previousEndTime[_subscriberAddress][_planId] + 1;
+      startTime = startTime + 1;
     }
+
+    uint256 endTime = startTime + (plan.paymentInterval * 1 days);
+    require(endTime <=  planTimes.planEndTime && block.timestamp < planTimes.planEndTime, "Plan Renewal required");
 
     SafeERC20.safeTransferFrom(token, _subscriberAddress, plan.owner, charge);
 
-    uint256 endTime = (startTime - 1) + (plan.paymentInterval * 1 days);
-    previousEndTime[_subscriberAddress][_planId] = endTime;
+    subscriberPlanTime[_subscriberAddress][_planId].previousStartTime = startTime;
+    subscriberPlanTime[_subscriberAddress][_planId].previousEndTime = endTime;
 
     emit ChargeSuccess(_planId, plan.owner, _subscriberAddress, startTime, endTime, charge);
   }
