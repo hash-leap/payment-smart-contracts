@@ -6,6 +6,7 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { Contract } from "ethers";
 import sinon from "sinon";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("SubscriptionFacetV1", async () => {
   let signers: SignerWithAddress[];
@@ -349,7 +350,7 @@ describe("SubscriptionFacetV1", async () => {
     });
   });
 
-  describe("chargeFee", () => {
+  describe("chargeFeeBySubscriptionOwner", () => {
     beforeEach(async () => {
       signers = await ethers.getSigners();
       owner = signers[0];
@@ -358,6 +359,20 @@ describe("SubscriptionFacetV1", async () => {
       const myTestERC20Factory = await ethers.getContractFactory("MyTestERC20");
       myTestERC20 = await myTestERC20Factory.deploy();
       await myTestERC20.deployed();
+    });
+
+    describe("when subscription plan is not found", () => {
+      it("should be reverted", async () => {
+        await expect(
+          subscriptionFacetV1
+            .connect(nonOwner)
+            .chargeFeeBySubscriptionOwner(
+              10,
+              myTestERC20.address,
+              signers[2].address
+            )
+        ).to.be.revertedWithCustomError(subscriptionFacetV1, "PlanNotFound");
+      });
     });
 
     describe("when subscription owner is paused", () => {
@@ -377,27 +392,17 @@ describe("SubscriptionFacetV1", async () => {
           .pauseSubscriptionOwner(nonOwner.address);
 
         await expect(
-          subscriptionFacetV1.chargeFee(
-            0,
-            myTestERC20.address,
-            signers[2].address
-          )
+          subscriptionFacetV1
+            .connect(nonOwner)
+            .chargeFeeBySubscriptionOwner(
+              0,
+              myTestERC20.address,
+              signers[2].address
+            )
         ).to.be.revertedWithCustomError(
           subscriptionFacetV1,
           "PausedSubscriptionOwner"
         );
-      });
-    });
-
-    describe("when subscription plan is not found", () => {
-      it("should be reverted", async () => {
-        await expect(
-          subscriptionFacetV1.chargeFee(
-            10,
-            myTestERC20.address,
-            signers[2].address
-          )
-        ).to.be.revertedWithCustomError(subscriptionFacetV1, "PlanNotFound");
       });
     });
 
@@ -417,11 +422,13 @@ describe("SubscriptionFacetV1", async () => {
       describe("when plan not subscibed yet", () => {
         it("should revert", async () => {
           await expect(
-            subscriptionFacetV1.chargeFee(
-              0,
-              myTestERC20.address,
-              signers[2].address
-            )
+            subscriptionFacetV1
+              .connect(nonOwner)
+              .chargeFeeBySubscriptionOwner(
+                0,
+                myTestERC20.address,
+                signers[2].address
+              )
           ).to.be.revertedWith("Plan: not subscribed");
         });
       });
@@ -435,18 +442,159 @@ describe("SubscriptionFacetV1", async () => {
             .connect(signers[2])
             .subscribe(0, myTestERC20.address);
         });
+
         it("should set up all data", async () => {
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
 
-          const subscribeTx = await subscriptionFacetV1.chargeFee(
-            0,
-            myTestERC20.address,
-            signers[2].address
-          );
+          const subscribeTx = await subscriptionFacetV1
+            .connect(nonOwner)
+            .chargeFeeBySubscriptionOwner(
+              0,
+              myTestERC20.address,
+              signers[2].address
+            );
 
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
           expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
           expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
+        });
+
+        it("should revert if charged sooner than expected", async () => {
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
+
+          const subscribeTx = await subscriptionFacetV1
+            .connect(nonOwner)
+            .chargeFeeBySubscriptionOwner(
+              0,
+              myTestERC20.address,
+              signers[2].address
+            );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
+          expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
+
+          await expect(
+            subscriptionFacetV1
+              .connect(nonOwner)
+              .chargeFeeBySubscriptionOwner(
+                0,
+                myTestERC20.address,
+                signers[2].address
+              )
+          ).to.be.revertedWith("Duplicate subscription payment");
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
+        });
+
+        it("should not revert if charged after the expected time", async () => {
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
+
+          const subscribeTx = await subscriptionFacetV1
+            .connect(nonOwner)
+            .chargeFeeBySubscriptionOwner(
+              0,
+              myTestERC20.address,
+              signers[2].address
+            );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
+          expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
+
+          await time.increase(14 * 24 * 3600);
+          await subscriptionFacetV1
+            .connect(nonOwner)
+            .chargeFeeBySubscriptionOwner(
+              0,
+              myTestERC20.address,
+              signers[2].address
+            );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2062);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(138);
+        });
+
+        it("should allow charging upto 3 days in advance", async () => {
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
+
+          const subscribeTx = await subscriptionFacetV1
+            .connect(nonOwner)
+            .chargeFeeBySubscriptionOwner(
+              0,
+              myTestERC20.address,
+              signers[2].address
+            );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
+          expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
+
+          await time.increase(11 * 24 * 3600);
+          await subscriptionFacetV1
+            .connect(nonOwner)
+            .chargeFeeBySubscriptionOwner(
+              0,
+              myTestERC20.address,
+              signers[2].address
+            );
+
+          expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2062);
+          expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(138);
+
+          await time.increase(10 * 24 * 3600);
+          await expect(
+            subscriptionFacetV1
+              .connect(nonOwner)
+              .chargeFeeBySubscriptionOwner(
+                0,
+                myTestERC20.address,
+                signers[2].address
+              )
+          ).to.be.revertedWith("Duplicate subscription payment");
+        });
+      });
+
+      describe("when user has plan subscription and being charged late", () => {
+        beforeEach(async () => {
+          await myTestERC20.mint(signers[2].address, 2200);
+          await myTestERC20.connect(signers[2]).approve(diamondAddress, 2200);
+
+          await subscriptionFacetV1
+            .connect(nonOwner)
+            .createPlan(
+              1200,
+              true,
+              60,
+              30,
+              ethers.utils.formatBytes32String("Test plan3")
+            );
+
+          await subscriptionFacetV1
+            .connect(signers[2])
+            .subscribe(1, myTestERC20.address);
+        });
+
+        it("should revert if current end time goes over plan end time", async () => {
+          subscriptionFacetV1
+            .connect(nonOwner)
+            .chargeFeeBySubscriptionOwner(
+              1,
+              myTestERC20.address,
+              signers[2].address
+            );
+
+          await time.increase(60 * 24 * 3600);
+          await expect(
+            subscriptionFacetV1
+              .connect(nonOwner)
+              .chargeFeeBySubscriptionOwner(
+                1,
+                myTestERC20.address,
+                signers[2].address
+              )
+          ).to.be.revertedWith("Plan Renewal required");
         });
       });
     });
@@ -798,27 +946,25 @@ describe("SubscriptionFacetV1", async () => {
     });
   });
 
-  describe("setBaseContractFee / getBaseContractFee", () => {
+  describe("setProtocolFee / getProtocolFee", () => {
     describe("when caller is not the contract owner", () => {
       it("should revert", async () => {
         await expect(
-          subscriptionFacetV1.connect(signers[1]).setBaseContractFee(10)
+          subscriptionFacetV1.connect(signers[1]).setProtocolFee(10)
         ).to.be.revertedWith("LibDiamond: Must be contract owner");
       });
     });
 
     describe("when caller is the contract owner", () => {
       it("should set and get the base contract fee", async () => {
-        let tx = await subscriptionFacetV1.getBaseContractFee();
+        let tx = await subscriptionFacetV1.getProtocolFee();
 
         expect(tx).to.be.eq(0);
 
-        tx = await subscriptionFacetV1
-          .connect(signers[0])
-          .setBaseContractFee(10);
+        tx = await subscriptionFacetV1.connect(signers[0]).setProtocolFee(10);
         await tx.wait();
 
-        tx = await subscriptionFacetV1.getBaseContractFee();
+        tx = await subscriptionFacetV1.getProtocolFee();
 
         expect(tx).to.be.eq(10);
       });

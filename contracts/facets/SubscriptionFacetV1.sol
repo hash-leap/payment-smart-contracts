@@ -39,7 +39,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   uint256 public constant MINIMUM_DURATION = 7;
   uint256 public constant MAXIMUM_DURATION = 365;
   uint256 public constant DEFAULT_APPROVAL_MULTIPLIER = 5;
-  uint256 private feeBasisPoints = 0;
+  uint256 private protocolFeeBasisPoints = 0;
 
   // Stores all subscription plan details mapped by their sequence
   mapping(uint256 => SubscriptionPlan) private plans;
@@ -51,7 +51,12 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
 
   // Store subscriptions a subscriber has subscribed to
   // uint in the nested mapping is planId
-  mapping(address => mapping(uint => bool)) private subscribers;
+  mapping(address => mapping(uint256 => bool)) private subscribers;
+
+  /// @dev address is the address of the subscriber
+  /// @dev uint256 in the mapping is the plan id
+  /// @dev SubscriberPlanPayments has subscriber plan times
+  mapping(address => mapping(uint256 => SubscriberPlanTime)) private subscriberPlanTime;
 
   // Plans active for a subscription owner
   mapping(address => uint256[]) private ownerActivePlanTracker;
@@ -64,7 +69,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   mapping(address => bool) private blackListedSubscriptionOwners;
 
   modifier onlySubscriptionOwner(uint256 planId, address owner) {
-    if (msg.sender != plans[planId].owner) {
+    if (plans[planId].owner != address(0) && msg.sender != plans[planId].owner) {
       revert NotSubscriptionOwner(owner, msg.sender);
     }
     _;
@@ -174,14 +179,17 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
       revert PlanNotFound(_planId);
     }
 
-    SubscriptionPlan storage plan = plans[_planId];
-
     require(subscribers[msg.sender][_planId] != true, "Plan: already subscribed");
+    subscribers[msg.sender][_planId] = true;
+
+    SubscriptionPlan storage plan = plans[_planId];
 
     uint256 startTime = block.timestamp;
     uint256 endTime = startTime + (plan.duration * 1 days);
 
-    subscribers[msg.sender][_planId] = true;
+    subscriberPlanTime[msg.sender][_planId].planEndTime = endTime;
+    subscriberPlanTime[msg.sender][_planId].planStartTime = startTime;
+
     chargeFee(_planId, _tokenContractAddress, msg.sender);
 
     emit NewSubscription(_planId, plan.owner, msg.sender, startTime, endTime, plan.fee);
@@ -195,7 +203,17 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
    * @param _tokenContractAddress is the erc20 token contract address for the payment
    * @param _subscriberAddress is the address from which payment will be taken
    */
-  function chargeFee(uint256 _planId, address _tokenContractAddress, address _subscriberAddress) public checkPausedOwners(_planId) {
+  function chargeFeeBySubscriptionOwner(
+    uint256 _planId, address _tokenContractAddress, address _subscriberAddress
+  ) public onlySubscriptionOwner(_planId, msg.sender)
+  {
+    chargeFee(_planId, _tokenContractAddress, _subscriberAddress);
+  }
+
+  function chargeFee(
+    uint256 _planId, address _tokenContractAddress, address _subscriberAddress
+  ) internal checkPausedOwners(_planId)
+  {
     SubscriptionPlan memory plan = getPlan(_planId);
 
     require(subscribers[_subscriberAddress][_planId] == true, "Plan: not subscribed");
@@ -209,17 +227,41 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
       "Insufficient allowance"
     );
 
-    // require users balance to be greater than or equal to the charged amount
+    // require users balance to be greater than or equal to the amount being charged
     require(
       token.balanceOf(_subscriberAddress) >= charge,
       "Insufficient token balance"
     );
 
+    SubscriberPlanTime storage planTimes = subscriberPlanTime[_subscriberAddress][_planId];
+
+    uint256 startTime;
+    if (planTimes.previousEndTime > 0) {
+      startTime = planTimes.previousEndTime;
+    } else {
+      // Use block timestamp on first charge which is run straight after the subscribing
+      startTime = block.timestamp;
+    }
+
+    /// @notice clients may charge 3 days in advance and in case of failure may retry 3 times until giving up or cancelling user subscription
+    uint256 timeWithBuffer = block.timestamp + 3 days;
+
+    /// @dev if the previousEndTime is set for the subscriber plan that means it is not the first payment
+    /// and we must compare with the previous payment end date to prevent double payment
+    uint256 previousEndTime = planTimes.previousEndTime;
+    if (previousEndTime > 0) {
+      require((timeWithBuffer + (plan.paymentInterval * 1 days)) > previousEndTime, "Duplicate subscription payment");
+
+      startTime = startTime + 1;
+    }
+
+    uint256 endTime = startTime + (plan.paymentInterval * 1 days);
+    require(endTime <=  planTimes.planEndTime && block.timestamp < planTimes.planEndTime, "Plan Renewal required");
+
     SafeERC20.safeTransferFrom(token, _subscriberAddress, plan.owner, charge);
 
-    uint256 startTime = block.timestamp;
-    // TODO: Prevent double charging for the same period
-    uint256 endTime = startTime + (plan.paymentInterval * 1 days);
+    subscriberPlanTime[_subscriberAddress][_planId].previousStartTime = startTime;
+    subscriberPlanTime[_subscriberAddress][_planId].previousEndTime = endTime;
 
     emit ChargeSuccess(_planId, plan.owner, _subscriberAddress, startTime, endTime, charge);
   }
@@ -238,9 +280,9 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   }
 
   /// @notice the fee deducted from every subscription fee for the protocol
-  /// @return deducted fee in percentage
-  function getBaseContractFee() external view returns(uint256) {
-    return feeBasisPoints;
+  /// @return deducted fee in basis points
+  function getProtocolFee() external view returns(uint256) {
+    return protocolFeeBasisPoints;
   }
 
   /// @dev We still return false even if the plan doesn't exist
@@ -309,9 +351,9 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
 
   /// @notice Sets the base contract fee to be charged by the protocol
   /// @param _basisPoints is the fee deducted on each subscription payment
-  function setBaseContractFee(uint256 _basisPoints) external {
+  function setProtocolFee(uint256 _basisPoints) external {
     LibDiamond.enforceIsContractOwner();
-    feeBasisPoints = _basisPoints;
+    protocolFeeBasisPoints = _basisPoints;
   }
 
   /// @notice This is forced removal of a subscription owner and all the plans they own

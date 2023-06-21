@@ -25,6 +25,13 @@ interface ISubscriptionFacetV1 {
     bytes32 title;
   }
 
+  struct SubscriberPlanTime {
+    uint256 previousEndTime;
+    uint256 previousStartTime;
+    uint256 planEndTime;
+    uint256 planStartTime;
+  }
+
   /**
    * @notice Creates a subscription plan
    * @param _price is the full price of subscription for the duration
@@ -57,7 +64,7 @@ interface ISubscriptionFacetV1 {
    * @param _tokenContractAddress is the erc20 token contract address for the payment
    * @param _subscriberAddress is the address from which payment will be taken
    */
-  function chargeFee(uint256 _planId, address _tokenContractAddress, address _subscriberAddress) external;
+  function chargeFeeBySubscriptionOwner(uint256 _planId, address _tokenContractAddress, address _subscriberAddress) external;
 
   /**
    * @notice Must be called by an subscriber to cancel the subscription
@@ -112,9 +119,13 @@ interface ISubscriptionFacetV1 {
   /// @notice A step before using this nuclear option, ideally, the owner should be first paused / deactivated
   function removeSubscriptionOwner(address _subscriptionOwner) external;
 
-  /// @notice Sets the base contract fee to be charged by the protocol
+  /// @notice Sets the protocol fee to be charged
   /// @param _basisPoints is the fee deducted on each subscription payment
-  function setBaseContractFee(uint256 _basisPoints) external;
+  function setProtocolFee(uint256 _basisPoints) external;
+
+  /// @notice the fee deducted from every subscription fee for the protocol
+  /// @return deducted fee in basis points
+  function getProtocolFee() external view returns(uint256);
 
   /**
    * @notice This is mainly to be used in case someone mistakenly sends tokens to the contract
