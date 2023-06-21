@@ -946,27 +946,25 @@ describe("SubscriptionFacetV1", async () => {
     });
   });
 
-  describe("setBaseContractFee / getBaseContractFee", () => {
+  describe("setProtocolFee / getProtocolFee", () => {
     describe("when caller is not the contract owner", () => {
       it("should revert", async () => {
         await expect(
-          subscriptionFacetV1.connect(signers[1]).setBaseContractFee(10)
+          subscriptionFacetV1.connect(signers[1]).setProtocolFee(10)
         ).to.be.revertedWith("LibDiamond: Must be contract owner");
       });
     });
 
     describe("when caller is the contract owner", () => {
       it("should set and get the base contract fee", async () => {
-        let tx = await subscriptionFacetV1.getBaseContractFee();
+        let tx = await subscriptionFacetV1.getProtocolFee();
 
         expect(tx).to.be.eq(0);
 
-        tx = await subscriptionFacetV1
-          .connect(signers[0])
-          .setBaseContractFee(10);
+        tx = await subscriptionFacetV1.connect(signers[0]).setProtocolFee(10);
         await tx.wait();
 
-        tx = await subscriptionFacetV1.getBaseContractFee();
+        tx = await subscriptionFacetV1.getProtocolFee();
 
         expect(tx).to.be.eq(10);
       });

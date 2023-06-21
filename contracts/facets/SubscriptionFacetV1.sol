@@ -39,7 +39,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   uint256 public constant MINIMUM_DURATION = 7;
   uint256 public constant MAXIMUM_DURATION = 365;
   uint256 public constant DEFAULT_APPROVAL_MULTIPLIER = 5;
-  uint256 private feeBasisPoints = 0;
+  uint256 private protocolFeeBasisPoints = 0;
 
   // Stores all subscription plan details mapped by their sequence
   mapping(uint256 => SubscriptionPlan) private plans;
@@ -280,9 +280,9 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   }
 
   /// @notice the fee deducted from every subscription fee for the protocol
-  /// @return deducted fee in percentage
-  function getBaseContractFee() external view returns(uint256) {
-    return feeBasisPoints;
+  /// @return deducted fee in basis points
+  function getProtocolFee() external view returns(uint256) {
+    return protocolFeeBasisPoints;
   }
 
   /// @dev We still return false even if the plan doesn't exist
@@ -351,9 +351,9 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
 
   /// @notice Sets the base contract fee to be charged by the protocol
   /// @param _basisPoints is the fee deducted on each subscription payment
-  function setBaseContractFee(uint256 _basisPoints) external {
+  function setProtocolFee(uint256 _basisPoints) external {
     LibDiamond.enforceIsContractOwner();
-    feeBasisPoints = _basisPoints;
+    protocolFeeBasisPoints = _basisPoints;
   }
 
   /// @notice This is forced removal of a subscription owner and all the plans they own

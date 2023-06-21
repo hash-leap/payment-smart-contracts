@@ -119,9 +119,13 @@ interface ISubscriptionFacetV1 {
   /// @notice A step before using this nuclear option, ideally, the owner should be first paused / deactivated
   function removeSubscriptionOwner(address _subscriptionOwner) external;
 
-  /// @notice Sets the base contract fee to be charged by the protocol
+  /// @notice Sets the protocol fee to be charged
   /// @param _basisPoints is the fee deducted on each subscription payment
-  function setBaseContractFee(uint256 _basisPoints) external;
+  function setProtocolFee(uint256 _basisPoints) external;
+
+  /// @notice the fee deducted from every subscription fee for the protocol
+  /// @return deducted fee in basis points
+  function getProtocolFee() external view returns(uint256);
 
   /**
    * @notice This is mainly to be used in case someone mistakenly sends tokens to the contract
