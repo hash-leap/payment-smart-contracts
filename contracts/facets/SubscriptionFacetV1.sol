@@ -33,7 +33,6 @@ import { ISubscriptionFacetV1 } from "../interfaces/ISubscriptionFacetV1.sol";
  *
  */
 contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
-  using BitMaps for BitMaps.BitMap;
   IERC20 public token;
 
   uint256 public constant MINIMUM_DURATION = 7;
@@ -42,25 +41,20 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   uint256 private protocolFeeBasisPoints = 0;
 
   // Stores all subscription plan details mapped by their sequence
-  mapping(uint256 => SubscriptionPlan) private plans;
-
-  // Total number of subscription plans to keep track off
-  uint256 private numPlans;
-  BitMaps.BitMap private activePlanIds;
-
+  mapping(bytes8 => SubscriptionPlan) private plans;
 
   // Store subscriptions a subscriber has subscribed to
   // uint in the nested mapping is planId
-  mapping(address => mapping(uint256 => bool)) private subscribers;
+  mapping(address => mapping(bytes8 => bool)) private subscribers;
 
   /// @dev address is the address of the subscriber
-  /// @dev uint256 in the mapping is the plan id
+  /// @dev bytes8 in the mapping is the plan id
   /// @dev SubscriberPlanPayments has subscriber plan times
-  mapping(address => mapping(uint256 => SubscriberPlanTime)) private subscriberPlanTime;
+  mapping(address => mapping(bytes8 => SubscriberPlanTime)) private subscriberPlanTime;
 
   // Plans active for a subscription owner
-  mapping(address => uint256[]) private ownerActivePlanTracker;
-  mapping(address => mapping(uint => bool)) private plansActive;
+  mapping(address => bytes8[]) private ownerActivePlans;
+  mapping(address => mapping(bytes8 => bool)) private ownerPlanTracker;
 
   // Paused subscription owners
   mapping(address => bool) private pausedSubscriptionOwners;
@@ -68,9 +62,21 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   // Blacklisted subscription owners
   mapping(address => bool) private blackListedSubscriptionOwners;
 
-  modifier onlySubscriptionOwner(uint256 planId, address owner) {
-    if (plans[planId].owner != address(0) && msg.sender != plans[planId].owner) {
-      revert NotSubscriptionOwner(owner, msg.sender);
+  modifier onlySubscriptionOwner(bytes8 planId) {
+    /**
+     *
+     * @dev all plans should have an owner i.e. non zero address
+     * if no owner is set on the plan struct then it means there
+     * is no plan present with that planId hash given
+     */
+    if (plans[planId].owner == address(0)) {
+      revert PlanNotFound(planId);
+    }
+
+    address _planOwner = plans[planId].owner;
+
+    if (msg.sender != _planOwner) {
+      revert NotSubscriptionOwner(_planOwner, msg.sender);
     }
     _;
   }
@@ -83,7 +89,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   }
 
   /// @dev Use this modifier for all functions that use subscriptions
-  modifier checkPausedOwners(uint256 _planId) {
+  modifier checkPausedOwners(bytes8 _planId) {
     SubscriptionPlan storage plan = plans[_planId];
 
     if (plan.owner == address(0)) {
@@ -121,17 +127,25 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
    * @param _title is simple user friendly text
    * @return boolean is true when completed successfully
    */
-  function createPlan(uint256 _price, bool _autoRenew, uint256 _duration, uint256 _paymentInterval, bytes32 _title) external checkPausedOwner checkBlackListOwner returns (bool){
+  function createPlan(
+    uint256 _price,
+    bool _autoRenew,
+    uint256 _duration,
+    uint256 _paymentInterval,
+    bytes32 _title
+  ) external checkPausedOwner checkBlackListOwner returns (bytes8)
+  {
+    bytes32 hash = keccak256(abi.encode(block.prevrandao, _price, _duration, _title, msg.sender));
+    bytes8 planKey = bytes8(hash);
+
     require(_duration >= MINIMUM_DURATION && _duration <= MAXIMUM_DURATION, "Subscription: invalid duration");
 
-    plans[numPlans] = SubscriptionPlan(_price, _autoRenew, msg.sender, _duration, _paymentInterval, _title);
-    activePlanIds.set(numPlans);
-    plansActive[msg.sender][numPlans] = true;
-    ownerActivePlanTracker[msg.sender].push(numPlans);
-    emit NewPlan(numPlans, _duration, _price, _autoRenew, msg.sender);
+    plans[planKey] = SubscriptionPlan(_price, _autoRenew, msg.sender, _duration, _paymentInterval, _title);
+    ownerPlanTracker[msg.sender][planKey] = true;
+    ownerActivePlans[msg.sender].push(planKey);
+    emit NewPlan(planKey, _duration, _price, _autoRenew, msg.sender);
 
-    numPlans++;
-    return true;
+    return planKey;
   }
 
   // #### FUNCTIONS REQUIRING CALLER TO BE SUBSCRIPTION OWNER
@@ -139,11 +153,17 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
    * @notice stops a subscription plan, can only be called by the subscription owner
    * @param _planId is the plan
    */
-  function stopPlan(uint256 _planId) public onlySubscriptionOwner(_planId, msg.sender){
-    activePlanIds.unset(_planId);
+  function stopPlan(bytes8 _planId) public onlySubscriptionOwner(_planId){
+    bytes8[] memory _activePlans = ownerActivePlans[msg.sender];
 
-    delete ownerActivePlanTracker[msg.sender][_planId];
-    delete plansActive[msg.sender][_planId];
+    for( uint i = 0; i < _activePlans.length; i++) {
+      if(_activePlans[i] == _planId) {
+        delete ownerActivePlans[msg.sender][i];
+        break;
+      }
+    }
+
+    delete ownerPlanTracker[msg.sender][_planId];
   }
 
   /**
@@ -151,7 +171,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
    * @param _planId is the plan
    * @param _subscriberAddress is the subscriber being cancelled by the plan owner
    */
-  function forcedCancellation(uint256 _planId, address _subscriberAddress) external checkPausedOwners(_planId) onlySubscriptionOwner(_planId, msg.sender) {
+  function forcedCancellation(bytes8 _planId, address _subscriberAddress) external checkPausedOwners(_planId) onlySubscriptionOwner(_planId) {
     require(subscribers[_subscriberAddress][_planId] == true, "Plan: not subscribed");
 
     delete subscribers[_subscriberAddress][_planId];
@@ -161,7 +181,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
    * @notice Must be called by subscriber to cancel the subscription
    * @param _planId is the plan
    */
-  function cancelSubscription(uint256 _planId) external {
+  function cancelSubscription(bytes8 _planId) external {
     getPlan(_planId);
     require(subscribers[msg.sender][_planId] == true, "Plan: not subscribed");
 
@@ -173,10 +193,11 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
    * @notice Subscriber must approve the amount before calling this function
    * @param _planId is the plan
    * @param _tokenContractAddress is ERC20 token contract that the user will be charged with
+   * @param _subscriptionOwner is the address of the owner to check if the plan is active
   */
-  function subscribe(uint256 _planId, address _tokenContractAddress) external checkPausedOwners(_planId) {
-    if (activePlanIds.get(_planId) != true) {
-      revert PlanNotFound(_planId);
+  function subscribe(bytes8 _planId, address _tokenContractAddress, address _subscriptionOwner) external checkPausedOwners(_planId) {
+    if (isPlanActiveForOwner(_subscriptionOwner,_planId) != true ) {
+      revert PlanNotActive(_planId);
     }
 
     require(subscribers[msg.sender][_planId] != true, "Plan: already subscribed");
@@ -204,14 +225,14 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
    * @param _subscriberAddress is the address from which payment will be taken
    */
   function chargeFeeBySubscriptionOwner(
-    uint256 _planId, address _tokenContractAddress, address _subscriberAddress
-  ) public onlySubscriptionOwner(_planId, msg.sender)
+    bytes8 _planId, address _tokenContractAddress, address _subscriberAddress
+  ) public onlySubscriptionOwner(_planId)
   {
     chargeFee(_planId, _tokenContractAddress, _subscriberAddress);
   }
 
   function chargeFee(
-    uint256 _planId, address _tokenContractAddress, address _subscriberAddress
+    bytes8 _planId, address _tokenContractAddress, address _subscriberAddress
   ) internal checkPausedOwners(_planId)
   {
     SubscriptionPlan memory plan = getPlan(_planId);
@@ -286,16 +307,12 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   }
 
   /// @dev We still return false even if the plan doesn't exist
-  function isPlanSubscribed(uint256 _planId, address _subscriberAddress) external view returns(bool) {
+  function isPlanSubscribed(bytes8 _planId, address _subscriberAddress) external view returns(bool) {
     return !!subscribers[_subscriberAddress][_planId];
   }
 
-  function isPlanActive(uint256 _planId) external view returns(bool) {
-    return activePlanIds.get(_planId);
-  }
-
-  function isPlanActiveForOwner(address _subscriptionOwner, uint256 _planId) external view returns(bool) {
-    return plansActive[_subscriptionOwner][_planId];
+  function isPlanActiveForOwner(address _subscriptionOwner, bytes8 _planId) public view returns(bool) {
+    return ownerPlanTracker[_subscriptionOwner][_planId];
   }
 
   /**
@@ -303,7 +320,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
    * @param _planId is the autogenerated sequential id of the plan when it was created
    * @return _plan is SubscriptionPlan for the _planId
    */
-  function getPlan(uint256 _planId) public view returns (SubscriptionPlan memory _plan) {
+  function getPlan(bytes8 _planId) public view returns (SubscriptionPlan memory _plan) {
     _plan = plans[_planId];
     if (_plan.owner == address(0)) {
       revert PlanNotFound(_planId);
@@ -362,11 +379,11 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   function removeSubscriptionOwner(address _subscriptionOwner) external {
     LibDiamond.enforceIsContractOwner();
 
-    for (uint256 i=0; i < ownerActivePlanTracker[_subscriptionOwner].length; i++) {
-      uint256 planId = ownerActivePlanTracker[_subscriptionOwner][i];
-      activePlanIds.unset(planId);
+    for (uint256 i=0; i < ownerActivePlans[_subscriptionOwner].length; i++) {
+      bytes8 planId = ownerActivePlans[_subscriptionOwner][i];
 
-      delete plansActive[_subscriptionOwner][planId];
+      delete ownerPlanTracker[_subscriptionOwner][planId];
+      delete ownerActivePlans[_subscriptionOwner][i];
     }
     blackListedSubscriptionOwners[_subscriptionOwner] = true;
   }

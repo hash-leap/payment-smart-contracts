@@ -15,6 +15,7 @@ describe("SubscriptionFacetV1", async () => {
   let owner: SignerWithAddress;
   let nonOwner: SignerWithAddress;
   let myTestERC20: Contract;
+  const randomPlanId = "0x9743bddfc05252bd";
 
   before(async () => {
     sinon.stub(console, "log");
@@ -150,10 +151,6 @@ describe("SubscriptionFacetV1", async () => {
 
     describe("on successful plan creation", () => {
       it("should setup the plan correctly", async () => {
-        expect(
-          await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 0)
-        ).to.be.false;
-
         const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
@@ -164,8 +161,11 @@ describe("SubscriptionFacetV1", async () => {
             ethers.utils.formatBytes32String("Test plan")
           );
 
+        const receipt = await createTx.wait();
+        const planId = receipt.events[0].args[0];
+
         expect(createTx).to.emit(subscriptionFacetV1, "NewPlan");
-        const plan = await subscriptionFacetV1.getPlan(0);
+        const plan = await subscriptionFacetV1.getPlan(planId);
 
         expect(plan.duration).to.eq(365);
         expect(plan.fee).to.eq(1200);
@@ -174,17 +174,26 @@ describe("SubscriptionFacetV1", async () => {
         expect(plan.paymentInterval).to.eq(7);
         expect(ethers.utils.parseBytes32String(plan.title)).to.eq("Test plan");
 
-        expect(await subscriptionFacetV1.isPlanActive(0)).to.be.true;
         expect(
-          await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 0)
+          await subscriptionFacetV1.isPlanActiveForOwner(
+            nonOwner.address,
+            planId
+          )
+        ).to.be.true;
+        expect(
+          await subscriptionFacetV1.isPlanActiveForOwner(
+            nonOwner.address,
+            planId
+          )
         ).to.be.true;
       });
     });
   });
 
   describe("stopPlan", () => {
-    it("should not stop the plan if the caller is not subscriptionOwner", async () => {
-      await subscriptionFacetV1
+    let planId: string;
+    beforeEach(async () => {
+      const createTx = await subscriptionFacetV1
         .connect(nonOwner)
         .createPlan(
           1200,
@@ -194,8 +203,12 @@ describe("SubscriptionFacetV1", async () => {
           ethers.utils.formatBytes32String("Test plan")
         );
 
+      const receipt = await createTx.wait();
+      planId = receipt.events[0].args[0];
+    });
+    it("should not stop the plan if the caller is not subscriptionOwner", async () => {
       await expect(
-        subscriptionFacetV1.connect(signers[4]).stopPlan(0)
+        subscriptionFacetV1.connect(signers[4]).stopPlan(planId)
       ).to.be.revertedWithCustomError(
         subscriptionFacetV1,
         "NotSubscriptionOwner"
@@ -203,7 +216,11 @@ describe("SubscriptionFacetV1", async () => {
     });
 
     it("should stop the plan if the caller is subscriptionOwner", async () => {
-      await subscriptionFacetV1
+      let planIds: string[] = [];
+      let createTx: any;
+      let receipt: any;
+
+      createTx = await subscriptionFacetV1
         .connect(nonOwner)
         .createPlan(
           1000,
@@ -213,7 +230,10 @@ describe("SubscriptionFacetV1", async () => {
           ethers.utils.formatBytes32String("Test plan1")
         );
 
-      await subscriptionFacetV1
+      receipt = await createTx.wait();
+      planIds.push(receipt.events[0].args[0]);
+
+      createTx = await subscriptionFacetV1
         .connect(nonOwner)
         .createPlan(
           1200,
@@ -222,8 +242,10 @@ describe("SubscriptionFacetV1", async () => {
           14,
           ethers.utils.formatBytes32String("Test plan2")
         );
+      receipt = await createTx.wait();
+      planIds.push(receipt.events[0].args[0]);
 
-      await subscriptionFacetV1
+      createTx = await subscriptionFacetV1
         .connect(nonOwner)
         .createPlan(
           1200,
@@ -232,21 +254,28 @@ describe("SubscriptionFacetV1", async () => {
           14,
           ethers.utils.formatBytes32String("Test plan3")
         );
+      receipt = await createTx.wait();
+      planIds.push(receipt.events[0].args[0]);
 
-      await subscriptionFacetV1.connect(nonOwner).stopPlan(1);
-
-      expect(await subscriptionFacetV1.isPlanActive(0)).to.be.true;
-      expect(await subscriptionFacetV1.isPlanActive(1)).to.be.false;
-      expect(await subscriptionFacetV1.isPlanActive(2)).to.be.true;
+      await subscriptionFacetV1.connect(nonOwner).stopPlan(planIds[1]);
 
       expect(
-        await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 0)
+        await subscriptionFacetV1.isPlanActiveForOwner(
+          nonOwner.address,
+          planIds[0]
+        )
       ).to.be.true;
       expect(
-        await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 1)
+        await subscriptionFacetV1.isPlanActiveForOwner(
+          nonOwner.address,
+          planIds[1]
+        )
       ).to.be.false;
       expect(
-        await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 2)
+        await subscriptionFacetV1.isPlanActiveForOwner(
+          nonOwner.address,
+          planIds[2]
+        )
       ).to.be.true;
     });
   });
@@ -260,7 +289,7 @@ describe("SubscriptionFacetV1", async () => {
 
     describe("when subscription owner is paused", () => {
       it("should be reverted", async () => {
-        await subscriptionFacetV1
+        const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1200,
@@ -269,6 +298,8 @@ describe("SubscriptionFacetV1", async () => {
             14,
             ethers.utils.formatBytes32String("Test plan2")
           );
+        const receipt = await createTx.wait();
+        const planId = receipt.events[0].args[0];
 
         await subscriptionFacetV1
           .connect(owner)
@@ -277,7 +308,7 @@ describe("SubscriptionFacetV1", async () => {
         await expect(
           subscriptionFacetV1
             .connect(signers[2])
-            .subscribe(0, myTestERC20.address)
+            .subscribe(planId, myTestERC20.address, nonOwner.address)
         ).to.be.revertedWithCustomError(
           subscriptionFacetV1,
           "PausedSubscriptionOwner"
@@ -290,14 +321,19 @@ describe("SubscriptionFacetV1", async () => {
         await expect(
           subscriptionFacetV1
             .connect(signers[2])
-            .subscribe(10, ethers.constants.AddressZero)
+            .subscribe(
+              randomPlanId,
+              ethers.constants.AddressZero,
+              nonOwner.address
+            )
         ).to.be.revertedWithCustomError(subscriptionFacetV1, "PlanNotFound");
       });
     });
 
     describe("with a valid subscription plan", () => {
+      let planId: string;
       beforeEach(async () => {
-        await subscriptionFacetV1
+        const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1200,
@@ -306,6 +342,8 @@ describe("SubscriptionFacetV1", async () => {
             14,
             ethers.utils.formatBytes32String("Test plan2")
           );
+        const receipt = await createTx.wait();
+        planId = receipt.events[0].args[0];
       });
 
       describe("when msg sender already subscribed to the plan", () => {
@@ -318,16 +356,16 @@ describe("SubscriptionFacetV1", async () => {
 
           await subscriptionFacetV1
             .connect(signers[1])
-            .subscribe(0, myTestERC20.address);
+            .subscribe(planId, myTestERC20.address, nonOwner.address);
 
           await subscriptionFacetV1
             .connect(signers[2])
-            .subscribe(0, myTestERC20.address);
+            .subscribe(planId, myTestERC20.address, nonOwner.address);
 
           await expect(
             subscriptionFacetV1
               .connect(signers[2])
-              .subscribe(0, myTestERC20.address)
+              .subscribe(planId, myTestERC20.address, nonOwner.address)
           ).to.be.revertedWith("Plan: already subscribed");
         });
       });
@@ -340,7 +378,7 @@ describe("SubscriptionFacetV1", async () => {
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2200);
           const subscribeTx = await subscriptionFacetV1
             .connect(signers[2])
-            .subscribe(0, myTestERC20.address);
+            .subscribe(planId, myTestERC20.address, nonOwner.address);
 
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
           expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(46);
@@ -367,9 +405,9 @@ describe("SubscriptionFacetV1", async () => {
           subscriptionFacetV1
             .connect(nonOwner)
             .chargeFeeBySubscriptionOwner(
-              10,
+              randomPlanId,
               myTestERC20.address,
-              signers[2].address
+              nonOwner.address
             )
         ).to.be.revertedWithCustomError(subscriptionFacetV1, "PlanNotFound");
       });
@@ -377,7 +415,7 @@ describe("SubscriptionFacetV1", async () => {
 
     describe("when subscription owner is paused", () => {
       it("should be reverted", async () => {
-        await subscriptionFacetV1
+        const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1200,
@@ -387,6 +425,9 @@ describe("SubscriptionFacetV1", async () => {
             ethers.utils.formatBytes32String("Test plan2")
           );
 
+        const receipt = await createTx.wait();
+        const planId = receipt.events[0].args[0];
+
         await subscriptionFacetV1
           .connect(owner)
           .pauseSubscriptionOwner(nonOwner.address);
@@ -395,7 +436,7 @@ describe("SubscriptionFacetV1", async () => {
           subscriptionFacetV1
             .connect(nonOwner)
             .chargeFeeBySubscriptionOwner(
-              0,
+              planId,
               myTestERC20.address,
               signers[2].address
             )
@@ -407,8 +448,10 @@ describe("SubscriptionFacetV1", async () => {
     });
 
     describe("with a valid subscription plan", () => {
+      let planId: string;
+
       beforeEach(async () => {
-        await subscriptionFacetV1
+        const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1200,
@@ -417,6 +460,8 @@ describe("SubscriptionFacetV1", async () => {
             14,
             ethers.utils.formatBytes32String("Test plan2")
           );
+        const receipt = await createTx.wait();
+        planId = receipt.events[0].args[0];
       });
 
       describe("when plan not subscibed yet", () => {
@@ -425,7 +470,7 @@ describe("SubscriptionFacetV1", async () => {
             subscriptionFacetV1
               .connect(nonOwner)
               .chargeFeeBySubscriptionOwner(
-                0,
+                planId,
                 myTestERC20.address,
                 signers[2].address
               )
@@ -440,7 +485,7 @@ describe("SubscriptionFacetV1", async () => {
 
           await subscriptionFacetV1
             .connect(signers[2])
-            .subscribe(0, myTestERC20.address);
+            .subscribe(planId, myTestERC20.address, nonOwner.address);
         });
 
         it("should set up all data", async () => {
@@ -449,7 +494,7 @@ describe("SubscriptionFacetV1", async () => {
           const subscribeTx = await subscriptionFacetV1
             .connect(nonOwner)
             .chargeFeeBySubscriptionOwner(
-              0,
+              planId,
               myTestERC20.address,
               signers[2].address
             );
@@ -465,7 +510,7 @@ describe("SubscriptionFacetV1", async () => {
           const subscribeTx = await subscriptionFacetV1
             .connect(nonOwner)
             .chargeFeeBySubscriptionOwner(
-              0,
+              planId,
               myTestERC20.address,
               signers[2].address
             );
@@ -478,7 +523,7 @@ describe("SubscriptionFacetV1", async () => {
             subscriptionFacetV1
               .connect(nonOwner)
               .chargeFeeBySubscriptionOwner(
-                0,
+                planId,
                 myTestERC20.address,
                 signers[2].address
               )
@@ -494,7 +539,7 @@ describe("SubscriptionFacetV1", async () => {
           const subscribeTx = await subscriptionFacetV1
             .connect(nonOwner)
             .chargeFeeBySubscriptionOwner(
-              0,
+              planId,
               myTestERC20.address,
               signers[2].address
             );
@@ -507,7 +552,7 @@ describe("SubscriptionFacetV1", async () => {
           await subscriptionFacetV1
             .connect(nonOwner)
             .chargeFeeBySubscriptionOwner(
-              0,
+              planId,
               myTestERC20.address,
               signers[2].address
             );
@@ -522,7 +567,7 @@ describe("SubscriptionFacetV1", async () => {
           const subscribeTx = await subscriptionFacetV1
             .connect(nonOwner)
             .chargeFeeBySubscriptionOwner(
-              0,
+              planId,
               myTestERC20.address,
               signers[2].address
             );
@@ -535,7 +580,7 @@ describe("SubscriptionFacetV1", async () => {
           await subscriptionFacetV1
             .connect(nonOwner)
             .chargeFeeBySubscriptionOwner(
-              0,
+              planId,
               myTestERC20.address,
               signers[2].address
             );
@@ -548,7 +593,7 @@ describe("SubscriptionFacetV1", async () => {
             subscriptionFacetV1
               .connect(nonOwner)
               .chargeFeeBySubscriptionOwner(
-                0,
+                planId,
                 myTestERC20.address,
                 signers[2].address
               )
@@ -561,7 +606,7 @@ describe("SubscriptionFacetV1", async () => {
           await myTestERC20.mint(signers[2].address, 2200);
           await myTestERC20.connect(signers[2]).approve(diamondAddress, 2200);
 
-          await subscriptionFacetV1
+          const createTx = await subscriptionFacetV1
             .connect(nonOwner)
             .createPlan(
               1200,
@@ -570,17 +615,19 @@ describe("SubscriptionFacetV1", async () => {
               30,
               ethers.utils.formatBytes32String("Test plan3")
             );
+          const receipt = await createTx.wait();
+          planId = receipt.events[0].args[0];
 
           await subscriptionFacetV1
             .connect(signers[2])
-            .subscribe(1, myTestERC20.address);
+            .subscribe(planId, myTestERC20.address, nonOwner.address);
         });
 
         it("should revert if current end time goes over plan end time", async () => {
           subscriptionFacetV1
             .connect(nonOwner)
             .chargeFeeBySubscriptionOwner(
-              1,
+              planId,
               myTestERC20.address,
               signers[2].address
             );
@@ -590,7 +637,7 @@ describe("SubscriptionFacetV1", async () => {
             subscriptionFacetV1
               .connect(nonOwner)
               .chargeFeeBySubscriptionOwner(
-                1,
+                planId,
                 myTestERC20.address,
                 signers[2].address
               )
@@ -604,14 +651,17 @@ describe("SubscriptionFacetV1", async () => {
     describe("when plan doesn't exist", () => {
       it("should revert", async () => {
         await expect(
-          subscriptionFacetV1.connect(signers[2]).cancelSubscription(0)
+          subscriptionFacetV1
+            .connect(signers[2])
+            .cancelSubscription(randomPlanId)
         ).to.be.revertedWithCustomError(subscriptionFacetV1, "PlanNotFound");
       });
     });
 
     describe("when plan exist", () => {
+      let planId: string;
       beforeEach(async () => {
-        await subscriptionFacetV1
+        const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1200,
@@ -620,12 +670,14 @@ describe("SubscriptionFacetV1", async () => {
             14,
             ethers.utils.formatBytes32String("Test plan2")
           );
+        const receipt = await createTx.wait();
+        planId = receipt.events[0].args[0];
       });
 
       describe("and not subscribed by the user", () => {
         it("should revert", async () => {
           await expect(
-            subscriptionFacetV1.connect(signers[2]).cancelSubscription(0)
+            subscriptionFacetV1.connect(signers[2]).cancelSubscription(planId)
           ).to.be.revertedWith("Plan: not subscribed");
         });
       });
@@ -637,29 +689,43 @@ describe("SubscriptionFacetV1", async () => {
 
           await subscriptionFacetV1
             .connect(signers[1])
-            .subscribe(0, myTestERC20.address);
+            .subscribe(planId, myTestERC20.address, nonOwner.address);
 
           await myTestERC20.mint(signers[2].address, 2200);
           await myTestERC20.connect(signers[2]).approve(diamondAddress, 2200);
 
           await subscriptionFacetV1
             .connect(signers[2])
-            .subscribe(0, myTestERC20.address);
+            .subscribe(planId, myTestERC20.address, nonOwner.address);
 
           expect(
-            await subscriptionFacetV1.isPlanSubscribed(0, signers[1].address)
+            await subscriptionFacetV1.isPlanSubscribed(
+              planId,
+              signers[1].address
+            )
           ).to.be.true;
           expect(
-            await subscriptionFacetV1.isPlanSubscribed(0, signers[2].address)
+            await subscriptionFacetV1.isPlanSubscribed(
+              planId,
+              signers[2].address
+            )
           ).to.be.true;
 
-          await subscriptionFacetV1.connect(signers[2]).cancelSubscription(0);
+          await subscriptionFacetV1
+            .connect(signers[2])
+            .cancelSubscription(planId);
 
           expect(
-            await subscriptionFacetV1.isPlanSubscribed(0, signers[1].address)
+            await subscriptionFacetV1.isPlanSubscribed(
+              planId,
+              signers[1].address
+            )
           ).to.be.true;
           expect(
-            await subscriptionFacetV1.isPlanSubscribed(0, signers[2].address)
+            await subscriptionFacetV1.isPlanSubscribed(
+              planId,
+              signers[2].address
+            )
           ).to.be.false;
         });
       });
@@ -672,14 +738,15 @@ describe("SubscriptionFacetV1", async () => {
         await expect(
           subscriptionFacetV1
             .connect(nonOwner)
-            .forcedCancellation(0, signers[3].address)
+            .forcedCancellation(randomPlanId, signers[3].address)
         ).to.be.revertedWithCustomError(subscriptionFacetV1, "PlanNotFound");
       });
     });
 
     describe("when plan exist", () => {
+      let planId: string;
       beforeEach(async () => {
-        await subscriptionFacetV1
+        const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1200,
@@ -688,6 +755,8 @@ describe("SubscriptionFacetV1", async () => {
             14,
             ethers.utils.formatBytes32String("Test plan2")
           );
+        const receipt = await createTx.wait();
+        planId = receipt.events[0].args[0];
       });
 
       describe("and caller is not the subscription owner", () => {
@@ -695,7 +764,7 @@ describe("SubscriptionFacetV1", async () => {
           await expect(
             subscriptionFacetV1
               .connect(signers[2])
-              .forcedCancellation(0, signers[3].address)
+              .forcedCancellation(planId, signers[3].address)
           ).to.be.revertedWithCustomError(
             subscriptionFacetV1,
             "NotSubscriptionOwner"
@@ -709,7 +778,7 @@ describe("SubscriptionFacetV1", async () => {
             await expect(
               subscriptionFacetV1
                 .connect(nonOwner)
-                .forcedCancellation(0, signers[3].address)
+                .forcedCancellation(planId, signers[3].address)
             ).to.be.revertedWith("Plan: not subscribed");
           });
         });
@@ -721,31 +790,43 @@ describe("SubscriptionFacetV1", async () => {
 
             await subscriptionFacetV1
               .connect(signers[1])
-              .subscribe(0, myTestERC20.address);
+              .subscribe(planId, myTestERC20.address, nonOwner.address);
 
             await myTestERC20.mint(signers[2].address, 2200);
             await myTestERC20.connect(signers[2]).approve(diamondAddress, 2200);
 
             await subscriptionFacetV1
               .connect(signers[2])
-              .subscribe(0, myTestERC20.address);
+              .subscribe(planId, myTestERC20.address, nonOwner.address);
 
             expect(
-              await subscriptionFacetV1.isPlanSubscribed(0, signers[1].address)
+              await subscriptionFacetV1.isPlanSubscribed(
+                planId,
+                signers[1].address
+              )
             ).to.be.true;
             expect(
-              await subscriptionFacetV1.isPlanSubscribed(0, signers[2].address)
+              await subscriptionFacetV1.isPlanSubscribed(
+                planId,
+                signers[2].address
+              )
             ).to.be.true;
 
             await subscriptionFacetV1
               .connect(nonOwner)
-              .forcedCancellation(0, signers[2].address);
+              .forcedCancellation(planId, signers[2].address);
 
             expect(
-              await subscriptionFacetV1.isPlanSubscribed(0, signers[1].address)
+              await subscriptionFacetV1.isPlanSubscribed(
+                planId,
+                signers[1].address
+              )
             ).to.be.true;
             expect(
-              await subscriptionFacetV1.isPlanSubscribed(0, signers[2].address)
+              await subscriptionFacetV1.isPlanSubscribed(
+                planId,
+                signers[2].address
+              )
             ).to.be.false;
           });
         });
@@ -777,14 +858,18 @@ describe("SubscriptionFacetV1", async () => {
     describe("when plan doesn't exist", () => {
       it("should return false", async () => {
         expect(
-          await subscriptionFacetV1.isPlanSubscribed(0, signers[2].address)
+          await subscriptionFacetV1.isPlanSubscribed(
+            randomPlanId,
+            signers[2].address
+          )
         ).to.be.false;
       });
     });
 
     describe("when plan exist", () => {
+      let planId: string;
       beforeEach(async () => {
-        await subscriptionFacetV1
+        const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1200,
@@ -793,12 +878,18 @@ describe("SubscriptionFacetV1", async () => {
             14,
             ethers.utils.formatBytes32String("Test plan2")
           );
+
+        const receipt = await createTx.wait();
+        planId = receipt.events[0].args[0];
       });
 
       describe("and subscription doesn't", () => {
         it("should return false", async () => {
           expect(
-            await subscriptionFacetV1.isPlanSubscribed(0, signers[2].address)
+            await subscriptionFacetV1.isPlanSubscribed(
+              planId,
+              signers[2].address
+            )
           ).to.be.false;
         });
       });
@@ -810,45 +901,14 @@ describe("SubscriptionFacetV1", async () => {
 
           await subscriptionFacetV1
             .connect(signers[2])
-            .subscribe(0, myTestERC20.address);
+            .subscribe(planId, myTestERC20.address, nonOwner.address);
 
           expect(
-            await subscriptionFacetV1.isPlanSubscribed(0, signers[2].address)
+            await subscriptionFacetV1.isPlanSubscribed(
+              planId,
+              signers[2].address
+            )
           ).to.be.true;
-        });
-      });
-    });
-  });
-
-  describe("isPlanActive", () => {
-    describe("when plan doesn't exist", () => {
-      it("should return false", async () => {
-        expect(await subscriptionFacetV1.isPlanActive(0)).to.be.false;
-      });
-    });
-
-    describe("when plan exist", () => {
-      beforeEach(async () => {
-        await subscriptionFacetV1
-          .connect(nonOwner)
-          .createPlan(
-            1200,
-            true,
-            365,
-            14,
-            ethers.utils.formatBytes32String("Test plan2")
-          );
-      });
-
-      describe("when plan is active", () => {
-        it("should return true", async () => {
-          expect(await subscriptionFacetV1.isPlanActive(0)).to.be.true;
-        });
-      });
-      describe("when plan is inactive", () => {
-        it("should return false", async () => {
-          await subscriptionFacetV1.connect(nonOwner).stopPlan(0);
-          expect(await subscriptionFacetV1.isPlanActive(0)).to.be.false;
         });
       });
     });
@@ -858,14 +918,18 @@ describe("SubscriptionFacetV1", async () => {
     describe("when plan doesn't exist", () => {
       it("should return false", async () => {
         expect(
-          await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 0)
+          await subscriptionFacetV1.isPlanActiveForOwner(
+            nonOwner.address,
+            randomPlanId
+          )
         ).to.be.false;
       });
     });
 
     describe("when plan exist", () => {
+      let planId: string;
       beforeEach(async () => {
-        await subscriptionFacetV1
+        const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1200,
@@ -874,21 +938,29 @@ describe("SubscriptionFacetV1", async () => {
             14,
             ethers.utils.formatBytes32String("Test plan2")
           );
+        const receipt = await createTx.wait();
+        planId = receipt.events[0].args[0];
       });
 
       describe("when plan is active", () => {
         it("should return true", async () => {
           expect(
-            await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 0)
+            await subscriptionFacetV1.isPlanActiveForOwner(
+              nonOwner.address,
+              planId
+            )
           ).to.be.true;
         });
       });
 
       describe("when plan is inactive", () => {
         it("should return false", async () => {
-          await subscriptionFacetV1.connect(nonOwner).stopPlan(0);
+          await subscriptionFacetV1.connect(nonOwner).stopPlan(planId);
           expect(
-            await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 0)
+            await subscriptionFacetV1.isPlanActiveForOwner(
+              nonOwner.address,
+              planId
+            )
           ).to.be.false;
         });
       });
@@ -898,17 +970,16 @@ describe("SubscriptionFacetV1", async () => {
   describe("getPlan", () => {
     describe("when plan doesn't exist for the provided id", () => {
       it("should raise an exception", async () => {
-        await expect(subscriptionFacetV1.getPlan(2)).revertedWithCustomError(
-          subscriptionFacetV1,
-          "PlanNotFound"
-        );
+        await expect(
+          subscriptionFacetV1.getPlan(randomPlanId)
+        ).revertedWithCustomError(subscriptionFacetV1, "PlanNotFound");
       });
     });
 
     describe("when plan exist for the provided id", () => {
+      let planId: string;
       beforeEach(async () => {
-        let tx: any;
-        tx = await subscriptionFacetV1
+        const createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1000,
@@ -918,11 +989,12 @@ describe("SubscriptionFacetV1", async () => {
             ethers.utils.formatBytes32String("Create to test plan")
           );
 
-        await tx.wait();
+        const receipt = await createTx.wait();
+        planId = receipt.events[0].args[0];
       });
 
       it("should return the subscription plan", async () => {
-        const plan = await subscriptionFacetV1.getPlan(0);
+        const plan = await subscriptionFacetV1.getPlan(planId);
         expect(plan.duration).to.eq(365);
         expect(plan.fee).to.eq(1000);
         expect(plan.autoRenew).to.eq(true);
@@ -933,8 +1005,8 @@ describe("SubscriptionFacetV1", async () => {
       });
 
       it("should return the subscription plan even if plan is inactive", async () => {
-        await subscriptionFacetV1.connect(nonOwner).stopPlan(0);
-        const plan = await subscriptionFacetV1.getPlan(0);
+        await subscriptionFacetV1.connect(nonOwner).stopPlan(planId);
+        const plan = await subscriptionFacetV1.getPlan(planId);
         expect(plan.duration).to.eq(365);
         expect(plan.fee).to.eq(1000);
         expect(plan.autoRenew).to.eq(true);
@@ -1139,9 +1211,11 @@ describe("SubscriptionFacetV1", async () => {
     });
 
     describe("when caller is the contract owner", () => {
+      let planIds: string[] = [];
       beforeEach(async () => {
-        let tx: any;
-        tx = await subscriptionFacetV1
+        let createTx: any;
+        let receipt: any;
+        createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1000,
@@ -1150,8 +1224,11 @@ describe("SubscriptionFacetV1", async () => {
             30,
             ethers.utils.formatBytes32String("Create to test plan")
           );
-        await tx.wait();
-        tx = await subscriptionFacetV1
+
+        receipt = await createTx.wait();
+        planIds.push(receipt.events[0].args[0]);
+
+        createTx = await subscriptionFacetV1
           .connect(signers[2])
           .createPlan(
             1000,
@@ -1160,8 +1237,11 @@ describe("SubscriptionFacetV1", async () => {
             30,
             ethers.utils.formatBytes32String("Create to test plan")
           );
-        await tx.wait();
-        tx = await subscriptionFacetV1
+
+        receipt = await createTx.wait();
+        planIds.push(receipt.events[0].args[0]);
+
+        createTx = await subscriptionFacetV1
           .connect(nonOwner)
           .createPlan(
             1000,
@@ -1170,7 +1250,8 @@ describe("SubscriptionFacetV1", async () => {
             30,
             ethers.utils.formatBytes32String("Create to test plan")
           );
-        await tx.wait();
+        receipt = await createTx.wait();
+        planIds.push(receipt.events[0].args[0]);
       });
 
       it("should remove all plans of the subscription and blacklist the subscription user", async () => {
@@ -1182,17 +1263,23 @@ describe("SubscriptionFacetV1", async () => {
         await subscriptionFacetV1
           .connect(owner)
           .removeSubscriptionOwner(nonOwner.address);
-        expect(await subscriptionFacetV1.isPlanActive(0)).to.be.false;
-        expect(await subscriptionFacetV1.isPlanActive(2)).to.be.false;
-        expect(await subscriptionFacetV1.isPlanActive(1)).to.be.true;
         expect(
-          await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 0)
+          await subscriptionFacetV1.isPlanActiveForOwner(
+            nonOwner.address,
+            planIds[0]
+          )
         ).to.be.false;
         expect(
-          await subscriptionFacetV1.isPlanActiveForOwner(nonOwner.address, 2)
+          await subscriptionFacetV1.isPlanActiveForOwner(
+            nonOwner.address,
+            planIds[2]
+          )
         ).to.be.false;
         expect(
-          await subscriptionFacetV1.isPlanActiveForOwner(signers[2].address, 1)
+          await subscriptionFacetV1.isPlanActiveForOwner(
+            signers[2].address,
+            planIds[1]
+          )
         ).to.be.true;
         expect(
           await subscriptionFacetV1.isSubscriptionOwnerblackListed(
