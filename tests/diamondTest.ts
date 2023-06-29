@@ -25,10 +25,14 @@ describe("DiamondTest", async () => {
   const addresses: string[] = [];
   let signers: SignerWithAddress[];
   const spotPaymentFacetV1Functions = [
-    "transfer(address,address,uint256,uint8,string[],string,string)",
+    "transfer(address,string,uint256,uint8,bytes32[],bytes32,bytes32)",
+    "getTokenAddress(string)",
+    "setTokenAddress(string,address)",
     "getContractAddressCount()",
-    "getContractAddressAt(uint16)",
-    "getTransferAmount(address)",
+    "pauseTransfers()",
+    "restartTransfers()",
+    "isPaused()",
+    "getTotalAmountForToken(string)",
   ];
 
   const crossChainPaymentFacetV1Functions = [
@@ -145,16 +149,25 @@ describe("DiamondTest", async () => {
       "SpotPaymentFacetV1",
       diamondAddress
     );
+
+    const tx = await spotPaymentFacet
+      .connect(signers[0])
+      .setTokenAddress("MYK", myTestERC20.address);
+    await tx.wait();
+
     await myTestERC20.mint(signers[0].address, 200000);
     await myTestERC20.approve(diamondAddress, 20000);
     await spotPaymentFacet.transfer(
       signers[1].address,
-      myTestERC20.address,
+      "MYK",
       20000,
       1,
-      ["tag1", "tag2"],
-      "invoiceNumber",
-      "invoice"
+      [
+        ethers.utils.formatBytes32String("tag1"),
+        ethers.utils.formatBytes32String("tag2"),
+      ],
+      ethers.utils.formatBytes32String("invoiceNumber"),
+      ethers.utils.formatBytes32String("invoice")
     );
     expect(await myTestERC20.balanceOf(signers[0].address)).to.eq(180000);
     expect(await myTestERC20.balanceOf(signers[1].address)).to.eq(20000);
@@ -175,9 +188,12 @@ describe("DiamondTest", async () => {
       ethers.constants.AddressZero,
       ethers.utils.parseUnits("1", "ether"),
       0,
-      ["tag1", "tag2"],
-      "invoiceNumber",
-      "invoice",
+      [
+        ethers.utils.formatBytes32String("tag1"),
+        ethers.utils.formatBytes32String("tag2"),
+      ],
+      ethers.utils.formatBytes32String("invoiceNumber"),
+      ethers.utils.formatBytes32String("invoice"),
       {
         value: ethers.utils.parseUnits("1", "ether"),
       }

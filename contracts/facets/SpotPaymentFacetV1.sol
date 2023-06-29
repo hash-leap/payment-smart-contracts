@@ -11,23 +11,27 @@ pragma solidity ^0.8.18;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ISpotPaymentFacetV1 } from "../interfaces/ISpotPaymentFacetV1.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { LibDiamond } from "../libraries/LibDiamond.sol";
 
 contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
     IERC20 private token;
-    bool lock;
+    bool private pause;
 
-    // stores the total for each ERC20 or native token
-    mapping(address => uint256) private totalTransfers;
+    // Total for each ERC20 or native token
+    mapping(string => uint256) private totalTransfers;
 
-    // all contract addresses that we done transfers to
-    address[] private addresses;
+    // Token symbols and their contract addresses
+    mapping(string => address) private _tokenAddresses;
 
-    // count of all contract addresses
+    // Count of all accepted token symbols
     uint16 private contractAddressCount;
+
+    // Accepted Token symbol list
+    string[] private _tokenSymbols;
 
     /// @notice takes the erc20 token and sends to the recipient address
     /// @param _recipient is the token being sent to
-    /// @param _tokenContractAddress is the address of the erc20 token that we need to update
+    /// @param _tokenSymbol is the symbold of the erc20 token that is being transferred
     /// @dev for native token transfers send AddressZero for _tokenContractAddress
     /// @param _amount is the amount being sent by the sender to the reciever
     /// @param _contractType is the enum to indicate if it is a native or erc20 transfer
@@ -35,22 +39,19 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
     /// @param _paymentRef is the HashLeap payment reference e.g. invoice number or payment link identifier
     function transfer(
         address _recipient,
-        address _tokenContractAddress,
+        string calldata _tokenSymbol,
         uint256 _amount,
         ContractType _contractType,
-        string[] calldata _tags,
-        string calldata _paymentRef,
-        string calldata _paymentType
+        bytes32[] calldata _tags,
+        bytes32 _paymentRef,
+        bytes32 _paymentType
     ) payable external returns(bool){
-        require(!lock, "Error: Re-entering transfer method");
+        require(!isPaused(), "Transfers are paused");
+        require(_recipient != address(0), "Recipient with zero address");
         require(_amount > 0, "Error: Amount must be greater than zero");
 
-        lock = true;
-
-        // store if this is the first time we are using an ERC20 or native token
-        bool newAddress = _getTransferAmount(_tokenContractAddress) == 0;
-
         require(msg.sender != _recipient, "Same account transfer is not allowed");
+        address _tokenAddress = address(0);
 
         // handle contract types
         if (_contractType == ContractType.NATIVE_TOKEN) {
@@ -76,7 +77,11 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
             require(sent, "Failed to send Native Token");
 
         } else if (_contractType == ContractType.ERC20) {
-            token = IERC20(_tokenContractAddress);
+            _tokenAddress = _tokenAddresses[_tokenSymbol];
+
+            require(_tokenAddress != address(0), "Invalid token passed");
+
+            token = IERC20(_tokenAddress);
 
             // Make sure the user has approved the amount before hitting this function
             // require allowance to be at least the amount being deposited
@@ -98,13 +103,12 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
             revert("Invalid contract type");
         }
 
-        totalTransfers[_tokenContractAddress] += _amount;
-        updateAddresses(_tokenContractAddress, newAddress);
+        totalTransfers[_tokenSymbol] += _amount;
 
         emit TransferSuccess(
             msg.sender,
             _recipient,
-            _tokenContractAddress,
+            _tokenAddress,
             "HashLeap",
             _tags,
             _amount,
@@ -114,36 +118,64 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
             block.number
         );
 
-        lock = false;
         return true;
     }
 
-    // returns the contract address count that have been used for transfers
+    /// @notice returns the address of the given token symbol
+    /// @param _symbol is the token symbol
+    function getTokenAddress(string calldata _symbol) external view returns(address) {
+        return _tokenAddresses[_symbol];
+    }
+
+    /// @notice the address of the given token
+    /// @param _symbol is the token symbol
+    /// @param _contractAddress is the address of the erc20 token contract
+    function setTokenAddress(string calldata _symbol, address _contractAddress) external {
+        LibDiamond.enforceIsContractOwner();
+        _tokenAddresses[_symbol] = _contractAddress;
+
+        bool _present;
+        for(uint i = 0; i < contractAddressCount; i++) {
+            if (keccak256(abi.encodePacked(_tokenSymbols[i])) == keccak256(abi.encodePacked(_symbol))) {
+                _present = true;
+                break;
+            }
+        }
+        if (!_present) {
+           contractAddressCount += 1;
+           _tokenSymbols.push(_symbol);
+        }
+    }
+
+    /// @notice returns a count of all tokens accepted
     function getContractAddressCount() external view returns (uint16) {
         return contractAddressCount;
     }
 
-    // returns the contract address present at the passed index
-    function getContractAddressAt(uint16 index) external view returns(address) {
-        return addresses[index];
+    /// @notice pauses all transfers, can only be called by the admin
+    function pauseTransfers() external {
+        LibDiamond.enforceIsContractOwner();
+        pause = true;
     }
 
-    // returns the total amount transferred to/from a contract
-    // should only be called by the deployer of the contract
-    function getTransferAmount(address _contractAddress) external view returns(uint256) {
-        return _getTransferAmount(_contractAddress);
+    /// @notice unpauses and restarts transfers, can only be called by the admin
+    function restartTransfers() external {
+        LibDiamond.enforceIsContractOwner();
+        pause = false;
     }
 
-    function _getTransferAmount(address _contractAddress) internal view returns(uint256) {
-        return totalTransfers[_contractAddress];
+    /// @notice returns a bolean value depending on if the contrat is paused or not
+    function isPaused() public view returns(bool) {
+        return pause;
     }
 
-    // internal function to do some housekeeping on transfers
-    // e.g. keeping an account of contract address list and positions
-    function updateAddresses(address _contractAddress, bool newAddress) internal {
-        if (newAddress) {
-            addresses.push(_contractAddress);
-            contractAddressCount += 1;
-        }
+    /// @notice returns the total amount transferred using a specific token
+    function getTotalAmountForToken(string calldata _tokenSymbol) external view returns(uint256) {
+        LibDiamond.enforceIsContractOwner();
+        return _getTransferAmount(_tokenSymbol);
+    }
+
+    function _getTransferAmount(string calldata _tokenSymbol) internal view returns(uint256) {
+        return totalTransfers[_tokenSymbol];
     }
 }
