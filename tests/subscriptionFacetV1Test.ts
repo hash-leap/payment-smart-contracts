@@ -150,6 +150,20 @@ describe("SubscriptionFacetV1", async () => {
     });
 
     describe("on successful plan creation", () => {
+      it("should emit the event", async () => {
+        await expect(
+          subscriptionFacetV1
+            .connect(nonOwner)
+            .createPlan(
+              1200,
+              true,
+              365,
+              7,
+              ethers.utils.formatBytes32String("Test plan")
+            )
+        ).to.emit(subscriptionFacetV1, "NewPlan");
+      });
+
       it("should setup the plan correctly", async () => {
         const createTx = await subscriptionFacetV1
           .connect(nonOwner)
@@ -164,7 +178,6 @@ describe("SubscriptionFacetV1", async () => {
         const receipt = await createTx.wait();
         const planId = receipt.events[0].args[0];
 
-        expect(createTx).to.emit(subscriptionFacetV1, "NewPlan");
         const plan = await subscriptionFacetV1.getPlan(planId);
 
         expect(plan.duration).to.eq(365);
@@ -257,7 +270,9 @@ describe("SubscriptionFacetV1", async () => {
       receipt = await createTx.wait();
       planIds.push(receipt.events[0].args[0]);
 
-      await subscriptionFacetV1.connect(nonOwner).stopPlan(planIds[1]);
+      await expect(
+        subscriptionFacetV1.connect(nonOwner).stopPlan(planIds[1])
+      ).to.emit(subscriptionFacetV1, "PlanStopped");
 
       expect(
         await subscriptionFacetV1.isPlanActiveForOwner(
@@ -376,13 +391,16 @@ describe("SubscriptionFacetV1", async () => {
           await myTestERC20.connect(signers[2]).approve(diamondAddress, 2200);
 
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2200);
-          const subscribeTx = await subscriptionFacetV1
-            .connect(signers[2])
-            .subscribe(planId, myTestERC20.address, nonOwner.address);
+          await expect(
+            subscriptionFacetV1
+              .connect(signers[2])
+              .subscribe(planId, myTestERC20.address, nonOwner.address)
+          )
+            .to.emit(subscriptionFacetV1, "ChargeSuccess")
+            .to.emit(subscriptionFacetV1, "NewSubscription");
 
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
           expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(46);
-          expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
         });
       });
     });
@@ -491,17 +509,18 @@ describe("SubscriptionFacetV1", async () => {
         it("should set up all data", async () => {
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2154);
 
-          const subscribeTx = await subscriptionFacetV1
-            .connect(nonOwner)
-            .chargeFeeBySubscriptionOwner(
-              planId,
-              myTestERC20.address,
-              signers[2].address
-            );
+          await expect(
+            subscriptionFacetV1
+              .connect(nonOwner)
+              .chargeFeeBySubscriptionOwner(
+                planId,
+                myTestERC20.address,
+                signers[2].address
+              )
+          ).to.emit(subscriptionFacetV1, "ChargeSuccess");
 
           expect(await myTestERC20.balanceOf(signers[2].address)).to.eq(2108);
           expect(await myTestERC20.balanceOf(nonOwner.address)).to.eq(92);
-          expect(subscribeTx).to.emit(subscriptionFacetV1, "ChargeSuccess");
         });
 
         it("should revert if charged sooner than expected", async () => {
@@ -711,9 +730,9 @@ describe("SubscriptionFacetV1", async () => {
             )
           ).to.be.true;
 
-          await subscriptionFacetV1
-            .connect(signers[2])
-            .cancelSubscription(planId);
+          await expect(
+            subscriptionFacetV1.connect(signers[2]).cancelSubscription(planId)
+          ).to.emit(subscriptionFacetV1, "SubscriptionCancelledBySubscriber");
 
           expect(
             await subscriptionFacetV1.isPlanSubscribed(
@@ -812,9 +831,11 @@ describe("SubscriptionFacetV1", async () => {
               )
             ).to.be.true;
 
-            await subscriptionFacetV1
-              .connect(nonOwner)
-              .forcedCancellation(planId, signers[2].address);
+            await expect(
+              subscriptionFacetV1
+                .connect(nonOwner)
+                .forcedCancellation(planId, signers[2].address)
+            ).to.emit(subscriptionFacetV1, "SubscriptionCancelledByOwner");
 
             expect(
               await subscriptionFacetV1.isPlanSubscribed(
@@ -1033,8 +1054,9 @@ describe("SubscriptionFacetV1", async () => {
 
         expect(tx).to.be.eq(0);
 
-        tx = await subscriptionFacetV1.connect(signers[0]).setProtocolFee(10);
-        await tx.wait();
+        await expect(
+          subscriptionFacetV1.connect(signers[0]).setProtocolFee(10)
+        ).to.emit(subscriptionFacetV1, "ProtocolFeeUpdated");
 
         tx = await subscriptionFacetV1.getProtocolFee();
 
@@ -1101,6 +1123,14 @@ describe("SubscriptionFacetV1", async () => {
             expect(await owner.getBalance()).to.eq(
               balance.add(10).sub(gasPaid)
             );
+          });
+
+          it("should emit the event", async () => {
+            await expect(
+              subscriptionFacetV1
+                .connect(owner)
+                .transferBalance(owner.address, 10)
+            ).to.emit(subscriptionFacetV1, "TransferNativeBalance");
           });
         });
       });
@@ -1186,9 +1216,11 @@ describe("SubscriptionFacetV1", async () => {
             expect(
               await subscriptionFacetV1.erc20Balance(myTestERC20.address)
             ).to.eq(11);
-            await subscriptionFacetV1
-              .connect(owner)
-              .transferERC20Balance(myTestERC20.address, owner.address, 11);
+            await expect(
+              subscriptionFacetV1
+                .connect(owner)
+                .transferERC20Balance(myTestERC20.address, owner.address, 11)
+            ).to.emit(subscriptionFacetV1, "TransferERCBalance");
             expect(
               await subscriptionFacetV1.erc20Balance(myTestERC20.address)
             ).to.eq(0);
@@ -1260,9 +1292,11 @@ describe("SubscriptionFacetV1", async () => {
             nonOwner.address
           )
         ).to.be.false;
-        await subscriptionFacetV1
-          .connect(owner)
-          .removeSubscriptionOwner(nonOwner.address);
+        await expect(
+          subscriptionFacetV1
+            .connect(owner)
+            .removeSubscriptionOwner(nonOwner.address)
+        ).to.emit(subscriptionFacetV1, "SubscriptionOwnerRemoved");
         expect(
           await subscriptionFacetV1.isPlanActiveForOwner(
             nonOwner.address,
@@ -1307,9 +1341,11 @@ describe("SubscriptionFacetV1", async () => {
           await subscriptionFacetV1.isSubscriptionOwnerPaused(nonOwner.address)
         ).to.be.false;
 
-        await subscriptionFacetV1
-          .connect(owner)
-          .pauseSubscriptionOwner(nonOwner.address);
+        await expect(
+          subscriptionFacetV1
+            .connect(owner)
+            .pauseSubscriptionOwner(nonOwner.address)
+        ).to.emit(subscriptionFacetV1, "SubscriptionOwnerPaused");
 
         expect(
           await subscriptionFacetV1.isSubscriptionOwnerPaused(nonOwner.address)
@@ -1339,9 +1375,11 @@ describe("SubscriptionFacetV1", async () => {
           await subscriptionFacetV1.isSubscriptionOwnerPaused(nonOwner.address)
         ).to.be.true;
 
-        await subscriptionFacetV1
-          .connect(owner)
-          .restoreSubscriptionOwner(nonOwner.address);
+        await expect(
+          subscriptionFacetV1
+            .connect(owner)
+            .restoreSubscriptionOwner(nonOwner.address)
+        ).to.emit(subscriptionFacetV1, "SubscriptionOwnerRestored");
 
         expect(
           await subscriptionFacetV1.isSubscriptionOwnerPaused(nonOwner.address)

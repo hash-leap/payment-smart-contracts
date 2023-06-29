@@ -164,6 +164,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
     }
 
     delete ownerPlanTracker[msg.sender][_planId];
+    emit PlanStopped(_planId, block.timestamp);
   }
 
   /**
@@ -175,6 +176,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
     require(subscribers[_subscriberAddress][_planId] == true, "Plan: not subscribed");
 
     delete subscribers[_subscriberAddress][_planId];
+    emit SubscriptionCancelledByOwner(_planId, _subscriberAddress, block.timestamp);
   }
 
   /**
@@ -186,6 +188,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
     require(subscribers[msg.sender][_planId] == true, "Plan: not subscribed");
 
     delete subscribers[msg.sender][_planId];
+    emit SubscriptionCancelledBySubscriber(_planId, msg.sender, block.timestamp);
   }
 
   // #### Any one can subscribe to a plan by calling this function
@@ -340,6 +343,8 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
 
     require(address(this).balance >= _amount, "Insufficient balance in the contract");
     _recipient.transfer(_amount);
+
+    emit TransferNativeBalance(_recipient, _amount);
   }
 
   /// @dev Get the smart contract's balance of erc20 tokens
@@ -364,6 +369,8 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
     token = IERC20(_erc20Address);
     require(token.balanceOf(address(this)) >= _amount, "Insufficient token balance in the contract");
     require(token.transfer(_recipient, _amount), "Token transfer failed");
+
+    emit TransferERCBalance(_erc20Address, _recipient, _amount);
   }
 
   /// @notice Sets the base contract fee to be charged by the protocol
@@ -371,6 +378,8 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   function setProtocolFee(uint256 _basisPoints) external {
     LibDiamond.enforceIsContractOwner();
     protocolFeeBasisPoints = _basisPoints;
+
+    emit ProtocolFeeUpdated(_basisPoints, block.timestamp);
   }
 
   /// @notice This is forced removal of a subscription owner and all the plans they own
@@ -386,6 +395,8 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
       delete ownerActivePlans[_subscriptionOwner][i];
     }
     blackListedSubscriptionOwners[_subscriptionOwner] = true;
+
+    emit SubscriptionOwnerRemoved(_subscriptionOwner, block.timestamp);
   }
 
   // Only to be used in severe situations e.g.
@@ -396,6 +407,8 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   function pauseSubscriptionOwner(address _subscriptionOwner) external {
     LibDiamond.enforceIsContractOwner();
     pausedSubscriptionOwners[_subscriptionOwner] = true;
+
+    emit SubscriptionOwnerPaused(_subscriptionOwner, block.timestamp);
   }
 
   /// @notice Unpauses and restores a subscription owner
@@ -404,6 +417,8 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   function restoreSubscriptionOwner(address _subscriptionOwner) external {
     LibDiamond.enforceIsContractOwner();
     delete pausedSubscriptionOwners[_subscriptionOwner];
+
+    emit SubscriptionOwnerRestored(_subscriptionOwner, block.timestamp);
   }
 
 }

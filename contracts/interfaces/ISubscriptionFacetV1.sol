@@ -154,4 +154,16 @@ interface ISubscriptionFacetV1 {
   event NewPlan(bytes8 planId, uint256 duration, uint256 fee, bool autoRenew, address subscriptionOwner);
   event NewSubscription(bytes8 planId, address subscriptionOwner, address subscriber, uint256 startTime, uint256 endTime, uint256 totalFee);
   event ChargeSuccess(bytes8 planId, address subscriptionOwner, address subscriber, uint256 startTime, uint256 endTime, uint256 amount);
+
+  event PlanStopped(bytes8 _planId, uint256 _time);
+  event SubscriptionCancelledByOwner(bytes8 _planId, address _subscriberAddress, uint256 time);
+  event SubscriptionCancelledBySubscriber(bytes8 _planId, address _subscriberAddress, uint256 time);
+
+  event TransferNativeBalance(address _recipient, uint _amount);
+  event TransferERCBalance(address _erc20Address, address _recipient, uint _amount);
+  event ProtocolFeeUpdated(uint256 _basisPoints, uint256 time);
+
+  event SubscriptionOwnerRemoved(address _subscriptionOwner, uint256 time);
+  event SubscriptionOwnerPaused(address _subscriptionOwner, uint256 time);
+  event SubscriptionOwnerRestored(address _subscriptionOwner, uint256 time);
 }
