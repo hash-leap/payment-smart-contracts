@@ -35,32 +35,31 @@ import { ISubscriptionFacetV1 } from "../interfaces/ISubscriptionFacetV1.sol";
 contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
   IERC20 public token;
 
-  uint256 public constant MINIMUM_DURATION = 7;
-  uint256 public constant MAXIMUM_DURATION = 365;
-  uint256 public constant DEFAULT_APPROVAL_MULTIPLIER = 5;
-  uint256 private protocolFeeBasisPoints = 0;
-
-  // Stores all subscription plan details mapped by their sequence
-  mapping(bytes8 => SubscriptionPlan) private plans;
-
-  // Store subscriptions a subscriber has subscribed to
-  // uint in the nested mapping is planId
-  mapping(address => mapping(bytes8 => bool)) private subscribers;
-
-  /// @dev address is the address of the subscriber
-  /// @dev bytes8 in the mapping is the plan id
-  /// @dev SubscriberPlanPayments has subscriber plan times
-  mapping(address => mapping(bytes8 => SubscriberPlanTime)) private subscriberPlanTime;
-
-  // Plans active for a subscription owner
-  mapping(address => bytes8[]) private ownerActivePlans;
-  mapping(address => mapping(bytes8 => bool)) private ownerPlanTracker;
+  uint8 public constant MINIMUM_DURATION = 7;
+  uint16 public constant MAXIMUM_DURATION = 365;
+  uint16 private protocolFeeBasisPoints = 0;
 
   // Paused subscription owners
   mapping(address => bool) private pausedSubscriptionOwners;
 
   // Blacklisted subscription owners
   mapping(address => bool) private blackListedSubscriptionOwners;
+
+  // Store subscriptions a subscriber has subscribed to
+  // uint in the nested mapping is planId
+  mapping(address => mapping(bytes8 => bool)) private subscribers;
+
+  // Plans active for a subscription owner
+  mapping(address => bytes8[]) private ownerActivePlans;
+  mapping(address => mapping(bytes8 => bool)) private ownerPlanTracker;
+
+  /// @dev address is the address of the subscriber
+  /// @dev bytes8 in the mapping is the plan id
+  /// @dev SubscriberPlanPayments has subscriber plan times
+  mapping(address => mapping(bytes8 => SubscriberPlanTime)) private subscriberPlanTime;
+
+  // Stores all subscription plan details mapped by their sequence
+  mapping(bytes8 => SubscriptionPlan) private plans;
 
   modifier onlySubscriptionOwner(bytes8 planId) {
     /**
@@ -375,7 +374,7 @@ contract SubscriptionFacetV1 is ISubscriptionFacetV1 {
 
   /// @notice Sets the base contract fee to be charged by the protocol
   /// @param _basisPoints is the fee deducted on each subscription payment
-  function setProtocolFee(uint256 _basisPoints) external {
+  function setProtocolFee(uint16 _basisPoints) external {
     LibDiamond.enforceIsContractOwner();
     protocolFeeBasisPoints = _basisPoints;
 

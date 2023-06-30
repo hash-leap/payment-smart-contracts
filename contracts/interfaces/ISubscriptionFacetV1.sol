@@ -121,7 +121,7 @@ interface ISubscriptionFacetV1 {
 
   /// @notice Sets the protocol fee to be charged
   /// @param _basisPoints is the fee deducted on each subscription payment
-  function setProtocolFee(uint256 _basisPoints) external;
+  function setProtocolFee(uint16 _basisPoints) external;
 
   /// @notice the fee deducted from every subscription fee for the protocol
   /// @return deducted fee in basis points

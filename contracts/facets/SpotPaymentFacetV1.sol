@@ -17,17 +17,17 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
     IERC20 private token;
     bool private pause;
 
-    // Total for each ERC20 or native token
-    mapping(string => uint256) private totalTransfers;
-
-    // Token symbols and their contract addresses
-    mapping(string => address) private _tokenAddresses;
-
     // Count of all accepted token symbols
     uint16 private contractAddressCount;
 
     // Accepted Token symbol list
     string[] private _tokenSymbols;
+
+    // Total for each ERC20 or native token
+    mapping(string => uint256) private totalTransfers;
+
+    // Token symbols and their contract addresses
+    mapping(string => address) private _tokenAddresses;
 
     /// @notice takes the erc20 token and sends to the recipient address
     /// @param _recipient is the token being sent to
