@@ -1,11 +1,9 @@
 import "@nomicfoundation/hardhat-toolbox";
 import { task, types } from "hardhat/config";
-import * as dotenv from "dotenv";
 import * as SpotPaymentJson from "./../src/artifacts/contracts/facets/SpotPaymentFacetV1.sol/SpotPaymentFacetV1.json";
 import { MyTestERC20__factory } from "../typechain-types";
 import { ethers } from "ethers";
-dotenv.config();
-
+import "./../scripts/dotenvConfig";
 import Config from "./../config";
 
 // USAGE:: This task is to test manually if everything is working.

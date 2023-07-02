@@ -1,10 +1,9 @@
 import "@nomicfoundation/hardhat-toolbox";
 import { task, types } from "hardhat/config";
-import * as dotenv from "dotenv";
 import * as SpotPaymentJson from "./../src/artifacts/contracts/facets/SpotPaymentFacetV1.sol/SpotPaymentFacetV1.json";
 import { ethers } from "ethers";
 import Config from "./../config";
-dotenv.config();
+import "./../scripts/dotenvConfig";
 
 task("event-subscription", "Subscribe to events")
   .addOptionalParam(

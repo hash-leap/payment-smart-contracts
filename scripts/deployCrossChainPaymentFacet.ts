@@ -1,8 +1,7 @@
 import { ethers } from "hardhat";
 import hre from "hardhat";
 import { getSelectors, FacetCutAction } from "./libraries/diamond";
-import * as dotenv from "dotenv";
-dotenv.config();
+import "./../scripts/dotenvConfig";
 
 import Config from "./../config";
 

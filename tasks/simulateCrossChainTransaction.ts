@@ -1,10 +1,9 @@
 import "@nomicfoundation/hardhat-toolbox";
 import { task, types } from "hardhat/config";
-import * as dotenv from "dotenv";
 import * as CrossChainPaymentJson from "./../src/artifacts/contracts/facets/CrossChainPaymentFacetV1.sol/CrossChainPaymentFacetV1.json";
 import * as IERC20Json from "./../src/artifacts/contracts/interfaces/IERC20.sol/IERC20.json";
 import { ethers } from "ethers";
-dotenv.config();
+import "./../scripts/dotenvConfig";
 import Config from "./../config";
 
 // USAGE:: This task is to test manually if everything is working.

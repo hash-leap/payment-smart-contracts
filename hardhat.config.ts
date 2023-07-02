@@ -1,8 +1,6 @@
 import "@nomicfoundation/hardhat-toolbox";
 import { task, HardhatUserConfig } from "hardhat/config";
-import * as dotenv from "dotenv";
-dotenv.config();
-
+import "./scripts/dotenvConfig";
 import "./tasks/eventSubscription";
 import "./tasks/simulatePaymentTransaction";
 import "./tasks/simulateCrossChainTransaction";
@@ -58,6 +56,10 @@ const config: HardhatUserConfig = {
     },
     bsc_testnet: {
       url: Config.rpcUrl.bsc_testnet,
+      accounts: [accountKey],
+    },
+    bsc: {
+      url: Config.rpcUrl.bsc,
       accounts: [accountKey],
     },
   },

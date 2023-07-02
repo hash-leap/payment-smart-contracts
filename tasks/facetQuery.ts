@@ -1,9 +1,8 @@
 import "@nomicfoundation/hardhat-toolbox";
 import { task, types } from "hardhat/config";
-import * as dotenv from "dotenv";
 import * as DiamondLoupeFacetJson from "./../src/artifacts/contracts/facets/DiamondLoupeFacet.sol/DiamondLoupeFacet.json";
 import { ethers } from "ethers";
-dotenv.config();
+import "./../scripts/dotenvConfig";
 
 import Config from "./../config";
 
