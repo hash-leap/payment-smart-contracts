@@ -26,34 +26,36 @@ export default {
   },
   contractAddresses: {
     diamond: {
-      sepolia: "0xc7398ea77acc285bd44588f0a0440ec32bb4126b",
-      bsc_testnet: "0x9a67df050425c5083e95d8caf781f5101f8cce5f",
+      sepolia: "",
+      bsc_testnet: "0xaC504dBF800Aa13d1E4d6043D032F4aF334Bc112",
     },
     diamondInit: {
-      sepolia: "0x77ee2c8b32b958689a47f26d0b794cd686213ffb",
-      bsc_testnet: "0x4fae96605bde241d7ba2958e91d2788d858e9814",
+      sepolia: "",
+      bsc_testnet: "0xf356F0Ef85676615cD66b069946b1C52930986df",
     },
     diamondCutFacet: {
-      sepolia: "0xa33FA76265444dCe21e480041a7B7d371A3d28E6",
-      bsc_testnet: "0x1f136935C071358e0f1233E6111CE6914B8a555B",
+      sepolia: "",
+      bsc_testnet: "0x737BE9d77be7589E154F273C887a4545a861bA36",
     },
     diamondLoupeFacet: {
-      sepolia: "0xf46bcc8a98b51cab23e1f49c01b47e94fd1befa0",
-      bsc_testnet: "0x53ab87ab2cb4f8207794c15751b6b80cdbf19c8e",
+      sepolia: "",
+      bsc_testnet: "0x80d0ED42F76115cAF3CF6A79ad2f89A22833fC6E",
     },
     ownershipFacet: {
-      sepolia: "0x25ed614bd9dd47676df94fc8d98c2e4bf6d0b8e4",
-      bsc_testnet: "0x5ed241d67d856c138bdd4c4191ee188b24e800bf",
+      sepolia: "",
+      bsc_testnet: "0x6112C62F8f0C3A2B4c559C8210E0DfB5Ed16bDFB",
     },
     spotPaymentFacet: {
-      sepolia: "0x7B6C3B617Fd3D46d4c7784598cF72D41f2d208C7",
-      bsc_testnet: "0xd9d13A65138Afd6439109F2134D78797f4ac2907",
+      sepolia: "",
+      bsc_testnet: "0x67A6b5b908d3FDE6AFF074c18a405a825b3dde5C",
     },
     subscriptionFacet: {
-      bsc_testnet: "",
+      sepolia: "",
+      bsc_testnet: "0x1e4edc37c23c7C587Fa7140d09814C4ed459A57D",
     },
     crossChainPayment: {
-      bsc_testnet: "0x2e01b711c5FD16e1cd2827E2043d1343AEb6C7fd",
+      sepolia: "",
+      bsc_testnet: "",
     },
   },
 };
