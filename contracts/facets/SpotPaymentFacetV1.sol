@@ -85,6 +85,7 @@ contract SpotPaymentFacetV1 is ISpotPaymentFacetV1 {
 
             // Make sure the user has approved the amount before hitting this function
             // require allowance to be at least the amount being deposited
+            // Set the allowance to existing allowance for this contract + amount for this transaction
             require(
                 token.allowance(msg.sender, address(this)) >= _amount,
                 "Insufficient allowance"

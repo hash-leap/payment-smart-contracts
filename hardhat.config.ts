@@ -7,6 +7,7 @@ import "./tasks/eventSubscription";
 import "./tasks/simulatePaymentTransaction";
 import "./tasks/simulateCrossChainTransaction";
 import "./tasks/facetQuery";
+import "./tasks/diamondOps";
 import Config from "./config";
 
 task("accounts", "Prints the list of accounts", async (_, hre) => {
