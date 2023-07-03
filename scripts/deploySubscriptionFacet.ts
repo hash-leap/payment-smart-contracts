@@ -12,6 +12,8 @@ export async function deploySubscriptionFacetV1() {
   );
   const subscriptionFacetV1 = await SubscriptionFacetV1.deploy();
   await subscriptionFacetV1.deployed();
+  console.log("SubscriptionFacetV1 Deployed at: ", subscriptionFacetV1.address);
+
   const diamondCutFacet = await ethers.getContractAt(
     "DiamondCutFacet",
     (Config.contractAddresses.diamond as Record<string, string>)[networkName]
@@ -27,14 +29,14 @@ export async function deploySubscriptionFacetV1() {
       },
     ],
     zeroAddress,
-    [],
-    { gasLimit: 800000 }
+    []
+    // { gasLimit: 800000 }
   );
   const receipt = await tx.wait();
   if (!receipt.status) {
     throw Error(`Diamond upgrade failed: ${tx.hash}`);
   }
-  console.log("SubscriptionFacetV1 Deployed at: ", subscriptionFacetV1.address);
+  console.log("Diamond Cut complete for Subscription Facet");
   return subscriptionFacetV1.address;
 }
 
