@@ -6,6 +6,7 @@ import "./tasks/simulatePaymentTransaction";
 import "./tasks/simulateCrossChainTransaction";
 import "./tasks/facetQuery";
 import "./tasks/diamondOps";
+import "./tasks/changeOwnership";
 import Config from "./config";
 
 task("accounts", "Prints the list of accounts", async (_, hre) => {
